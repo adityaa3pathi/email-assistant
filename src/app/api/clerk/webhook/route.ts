@@ -9,16 +9,18 @@ export const POST  = async (req: Request) => {
     const ImgUrl  = data.image_url;
 
     const id = data.id
-    await db.user.create({
+   const user =  await db.user.create({
         data: {
             id: id,
             emailAddress: emailAddress,
             firstName: firstName,
             lastName: lastName,
             imageUrl: ImgUrl,
-            
+
         }
     })
+
+      console.log("Created user:", user);
 
     return new Response('webhook received', {status: 200})
 }
