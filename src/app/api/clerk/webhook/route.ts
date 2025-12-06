@@ -1,24 +1,34 @@
 import { db } from "@/server/db"
 
+
+type ClerkUserWebhook = {
+  id: string;
+  email_addresses: { email_address: string }[];
+  first_name: string | null;
+  last_name: string | null;
+  image_url: string | null;
+};
+
+
 export const POST  = async (req: Request) => {
-    const{ data }= await req.json()
+    const{ data } :  {data: ClerkUserWebhook}= await req.json()
     console.log('clerk webhook received', data)
-    const emailAddress = data.email_addresses[0].email_address
-    const firstName = data.first_name
-    const lastName = data.last_name
-    const ImgUrl  = data.image_url;
 
-    const id = data.id
-   const user =  await db.user.create({
-        data: {
-            id: id,
-            emailAddress: emailAddress,
-            firstName: firstName,
-            lastName: lastName,
-            imageUrl: ImgUrl,
+   const emailAddress = data.email_addresses[0]?.email_address || "";
+  const firstName = data.first_name || "Unknown";
+  const lastName = data.last_name || "User";   // fallback to prevent null issue
+  const imageUrl = data.image_url || "";
 
-        }
-    })
+  const user = await db.user.create({
+    data: {
+      id: data.id,
+      emailAddress,
+      firstName,
+      lastName,
+      imageUrl,
+    },
+  });
+
 
       console.log("Created user:", user);
 
