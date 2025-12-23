@@ -40,7 +40,9 @@ export const POST = async (req: NextRequest) => {
            console.log('emails', emails)
            console.log('sync completed', deltaToken)
            return NextResponse.json({success: true}, {status: 200}) 
-           // one for the green
+           // 
            
+
+
 
 }
