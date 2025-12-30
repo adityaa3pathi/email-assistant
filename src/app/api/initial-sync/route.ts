@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 
 export const POST = async (req: NextRequest) => {
+    try {
+
+    
     const {accountId, userId} = await req.json()
 
     if(!accountId || !userId) return NextResponse.json({message: 'Missing account id or user id'}, {status: 400})
@@ -40,6 +43,10 @@ export const POST = async (req: NextRequest) => {
            console.log('emails', emails)
            console.log('sync completed', deltaToken)
            return NextResponse.json({success: true}, {status: 200}) 
+        }
+        catch(error) {
+            console.log("error:", error)
+        }
            // kal se padhai chalu
            
 
