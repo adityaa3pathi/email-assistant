@@ -24,6 +24,7 @@ export const POST = async (req: NextRequest) => {
            const account = new Account(dbAccount.accessToken)
 
            const response  = await account.performInitialSync()
+           
 
            if(!response) {
             return NextResponse.json({error: 'failed to perform initial sync'}, {status: 500})
@@ -46,6 +47,7 @@ export const POST = async (req: NextRequest) => {
         }
         catch(error) {
             console.log("error:", error)
+
         }
            // kal se padhai chalu
            

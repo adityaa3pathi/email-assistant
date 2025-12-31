@@ -7,6 +7,7 @@ import type { EmailMessage, SyncResponse, SyncUpdatedResponse } from "./types"
 
 export const getAurinkoAuthUrl = async(serviceType: 'Google' | 'Office365') => {
 
+    try{
 
     const {userId} = await auth()
     if(!userId) throw new Error("Unauthorized")
@@ -20,7 +21,11 @@ export const getAurinkoAuthUrl = async(serviceType: 'Google' | 'Office365') => {
         })
 
         return `https://api.aurinko.io/v1/auth/authorize?${params.toString()}`
+} 
 
+catch(error) {
+    console.log("error", error)
+}
 }
 
 export const exchangeCodeForAccessToken = async (code: string ) => {
