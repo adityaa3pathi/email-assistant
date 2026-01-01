@@ -2,17 +2,18 @@ import axios, {Axios} from "axios"
 import type { EmailMessage, SyncResponse, SyncUpdatedResponse } from "./types"
 
 
-export class Account {
+export class Account { 
     private token: string;
 
     constructor(token: string) {
         this.token = token
+        this.token
     }
 
     private async startSync() {
         const response = await axios.post<SyncResponse>('https://api.aurinko.io/v1/email/sync', {}, {
             headers: {
-                Authorization: `Bearer ${this.token}`
+                Authorization: `Bearer ${this.token}` // the concept used here is called dependency injection as we are injectiong a dependency(token) 
             },
             params: {
                 daysWithin: 2,
