@@ -7,7 +7,7 @@ export class Account {
 
     constructor(token: string) {
         this.token = token
-        this.token
+        
     }
 
     private async startSync() {

@@ -1,57 +1,54 @@
-
 import { Account } from "@/lib/aurinko-api-client";
 import { db } from "@/server/db";
 import { NextRequest, NextResponse } from "next/server";
 
+export async function POST(req: NextRequest) {
+  try {
+    const { accountId, userId } = await req.json();
 
-export const POST = async (req: NextRequest) => {
-    try {
+    if (!accountId || !userId) {
+      return NextResponse.json(
+        { message: "Missing account id or user id" },
+        { status: 400 }
+      );
+    }
 
-    
-    const {accountId, userId} = await req.json()
+    const dbAccount = await db.account.findUnique({
+      where: { id: accountId, userId },
+    });
 
-    if(!accountId || !userId) return NextResponse.json({message: 'Missing account id or user id'}, {status: 400})
+    if (!dbAccount) {
+      return NextResponse.json(
+        { message: "Account not found" },
+        { status: 400 }
+      );
+    }
 
-        const dbAccount = await db.account.findUnique({
-            where: {
-                id: accountId,
-                userId
-            }
-        })
-        if(!dbAccount) return NextResponse.json({message: 'Account not found'}, {status: 400})
+    const account = new Account(dbAccount.accessToken);
+    const response = await account.performInitialSync();
 
-           //p const emails = await perfomI
-           const account = new Account(dbAccount.accessToken)
+    if (!response) {
+      return NextResponse.json(
+        { error: "failed to perform initial sync" },
+        { status: 500 }
+      );
+    }
 
-           const response  = await account.performInitialSync()
-           
+    const { emails, deltaToken } = response;
 
-           if(!response) {
-            return NextResponse.json({error: 'failed to perform initial sync'}, {status: 500})
-           }
+    await db.account.update({
+      where: { id: accountId },
+      data: { nextDeltaToken: deltaToken },
+    });
 
-           const {emails, deltaToken} = response
+    console.log("synced emails:", emails.length);
 
-           await db.account.update({
-            where: {
-                id: accountId
-            },
-            data: {
-                nextDeltaToken: deltaToken
-            }
-           })
-  
-           console.log('emails', emails)
-           console.log('sync completed', deltaToken)
-           return NextResponse.json({success: true}, {status: 200}) 
-        }
-        catch(error) {
-            console.log("error:", error)
-
-        }
-           // kal se padhai chalu
-           
-
-
-
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Initial sync error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
