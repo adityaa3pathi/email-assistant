@@ -1,8 +1,10 @@
-import { Account } from "@/lib/aurinko-api-client";
+import { Account } from "@/lib/account-class";
 import { db } from "@/server/db";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+
+
   try {
     const { accountId, userId } = await req.json();
 
@@ -36,12 +38,12 @@ export async function POST(req: NextRequest) {
 
     const { emails, deltaToken } = response;
 
-    await db.account.update({
-      where: { id: accountId },
-      data: { nextDeltaToken: deltaToken },
-    });
+    // await db.account.update({
+    //   where: { id: accountId },
+    //   data: { nextDeltaToken: deltaToken },
+    // });
 
-    console.log("synced emails:", emails.length);
+    console.log("synced emails:", emails);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
