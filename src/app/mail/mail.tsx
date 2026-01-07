@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import AccountSwitcher from "./account-switcher"
+import sidebar from "./sidebar"
+import Sidebar from "./sidebar"
 
 type Props = {
   defaultLayout?: number[]
@@ -55,16 +58,14 @@ const Mail = ({
                 !isCollapsed && "px-2"
               )}
             >
-              Account Switcher
+              <AccountSwitcher isCollapsed={isCollapsed}/>
             </div>
 
             <Separator />
 
             {/* Sidebar content */}
-            <div className="px-2 py-2">Sidebar</div>
-
-            <div className="flex-1" />
-
+            <Sidebar isCollapsed={isCollapsed}/>
+            <div className="flex-1"></div>
             {/* Ask AI */}
             <div className="px-2 pb-2">Ask AI</div>
           </div>
