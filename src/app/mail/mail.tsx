@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import AccountSwitcher from "./account-switcher"
 import sidebar from "./sidebar"
 import Sidebar from "./sidebar"
+import ThreadList from "./threads-list"
 
 type Props = {
   defaultLayout?: number[]
@@ -95,10 +96,10 @@ const Mail = ({
             <Separator />
             Search Bar
             <TabsContent value="inbox">
-                inbox
+               <ThreadList/>
             </TabsContent>
             <TabsContent value="done">
-                done
+               <ThreadList/>
             </TabsContent>
         
           </Tabs>

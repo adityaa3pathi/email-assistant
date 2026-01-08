@@ -1,6 +1,7 @@
 import { createTRPCRouter, privateProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
-import type { Prisma } from "@prisma/client";
+import { EmailLabel, type Prisma } from "@prisma/client";
+import { sendStatusCode } from "next/dist/server/api-utils";
 import z from "zod";
 
 
@@ -56,11 +57,55 @@ getNumThreads: privateProcedure.input(z.object({
            ...filter
         }
        })
-})
+}),
 
 getThreads: privateProcedure.input(z.object({
     accountId: z.string(),
-    tab: z.string
-}))
+    tab: z.string(),
+    done: z.boolean()
+})).query(async ({ctx, input}) => {
+    const account = await authorizeAccountAccess(input.accountId, ctx.auth.userId) 
+
+     let filter: Prisma.ThreadWhereInput = {}
+       if(input.tab === 'inbox') {
+        filter.inboxStatus = true
+       }
+        else if(input.tab === 'draft') {
+        filter.draftStatus = true
+       }
+        if(input.tab === 'sent') {
+        filter.sentStatus = true
+       }
+
+       filter.done = {
+        equals: input.done
+       }
+
+       return  await ctx.db.thread.findMany({
+        where: filter,
+            include: {
+                emails: {
+                    orderBy: {
+                        sentAt: 'asc'
+                    },
+                    select: {
+                        from: true,
+                        body: true,
+                        bodySnippet: true,
+                        emailLabel: true,
+                        sysLabels: true,
+                        id: true,
+                        sentAt: true,
+                        subject: true,
+                    }
+                },
+            },
+            take: 15,
+            orderBy: {
+                lastMessageDate: 'desc'
+            }
+        
+       })
+})
 }) 
 

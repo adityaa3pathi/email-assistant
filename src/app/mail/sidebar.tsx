@@ -21,11 +21,11 @@ const Sidebar: FC<sidebarProps> = ({isCollapsed}: sidebarProps) => {
     }) 
     const {data: draftThreads} = api.account.getNumThreads.useQuery({
       accountId,
-      tab: 'inbox'
+      tab: 'draft'
     }) 
     const {data: sentThreads} = api.account.getNumThreads.useQuery({
       accountId,
-      tab: 'inbox'
+      tab: 'sent '
     }) 
 
   return (

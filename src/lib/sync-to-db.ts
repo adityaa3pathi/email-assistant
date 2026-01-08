@@ -10,15 +10,23 @@ async function syncEmailsToDatabase(emails: EmailMessage[], accountId: string) {
     console.log(`Syncing ${emails.length} emails to database`);
     const limit = pLimit(10); // Process up to 10 emails concurrently
 
-   
+      try {
+        // Promise.all(emails.map((emails, index) => upsertEmail(emails, accountId, index)))
 
+        for(const email of emails) {
+            await upsertEmail(email, accountId, 0)
+        }
+      }   
+catch (error) {
+    console.log('oopsies', error)
+}
 }
 
     
 
 
 
-async function upsertEmail(email: EmailMessage, index: number, accountId: string) { //Turn raw email address strings into canonical database identities, once, and reuse them everywhere.
+async function upsertEmail(email: EmailMessage, accountId: string, index: number) { //Turn raw email address strings into canonical database identities, once, and reuse them everywhere.
     console.log(`Upserting email ${index + 1}`, JSON.stringify(email, null, 2));
     try {
 
@@ -203,9 +211,8 @@ async function upsertEmailAddress(address: EmailAddress, accountId: string) {
         });
 
         if (existingAddress) {
-            return await db.emailAddress.update({
+            return await db.emailAddress.findUnique({
                 where: { id: existingAddress.id },
-                data: { name: address.name, raw: address.raw },
             });
         } else {
             return await db.emailAddress.create({
