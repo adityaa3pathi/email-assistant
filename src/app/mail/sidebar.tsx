@@ -13,20 +13,26 @@ interface sidebarProps {
 const Sidebar: FC<sidebarProps> = ({isCollapsed}: sidebarProps) => {
 
     const [accountId] = useLocalStorage('accountId', '')
-    const [tab] = useLocalStorage<'inbox' | 'draft' | 'sent'>('email-assistant-tab', 'inbox')
+    const [tab] = useLocalStorage<'inbox' | 'draft' | 'sent' >('email-assistant-tab', 'inbox')
+    const [done] = useLocalStorage('email-assistant-done', false)
 
     const {data: inboxThreads} = api.account.getNumThreads.useQuery({
       accountId,
-      tab: 'inbox'
+      tab: 'inbox',
+      
     }) 
     const {data: draftThreads} = api.account.getNumThreads.useQuery({
       accountId,
-      tab: 'draft'
+      tab: 'draft',
+      
     }) 
     const {data: sentThreads} = api.account.getNumThreads.useQuery({
       accountId,
-      tab: 'sent '
+      tab: 'sent',
+      
     }) 
+
+    console.log("sent thread count", sentThreads)
 
   return (
     
@@ -41,13 +47,13 @@ const Sidebar: FC<sidebarProps> = ({isCollapsed}: sidebarProps) => {
         },
         {
             title: 'Draft',
-            label: draftThreads?.toString() ,
+            label: draftThreads?.toString() ?? '0',
             icon: File,
             variant: tab === 'draft' ? 'default' : 'ghost'
         },
         {
-            title: 'sent',
-            label: sentThreads?.toString() ,
+            title: 'Sent',
+            label: sentThreads?.toString()  ?? '0',
             icon: Send,
             variant: tab === 'sent' ? "default" : 'ghost'
         },

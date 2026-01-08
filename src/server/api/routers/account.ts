@@ -47,15 +47,14 @@ getNumThreads: privateProcedure.input(z.object({
         else if(input.tab === 'draft') {
         filter.draftStatus = true
        }
-        if(input.tab === 'sent') {
+      else if(input.tab === 'sent') {
         filter.sentStatus = true
        }
 
+
+       console.log("the thread is:", ctx.db.thread.count)
        return await ctx.db.thread.count({
-        where: {
-            accountId: account.id,
-           ...filter
-        }
+        where: filter
        })
 }),
 

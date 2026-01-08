@@ -1,4 +1,4 @@
-import { Account } from "@/lib/account-class";
+import { Account } from "@/lib/account-class-perform-sync";
 import { syncEmailsToDatabase } from "@/lib/sync-to-db";
 import { db } from "@/server/db";
 import { NextRequest, NextResponse } from "next/server";

@@ -15,6 +15,9 @@ const useThreads = () => {
     }, {
         enabled: !!accountId && !!tab, placeholderData: e => e, refetchInterval: 5000
     })
+
+    console.log( "debug data", threads, tab ) // data is correct we just have to find why the ui is rendering the wrong data
+
     return {
         threads,
         isFetching,
