@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { ThemeToggle } from "../_components/toggle-theme"
 
 const Mail  = dynamic(() => {
   return import('./mail')
@@ -15,11 +16,16 @@ interface pageProps {
 }
 
 const page = ({}) => {
-  return <Mail
+  return<>
+   <div className="absolute bottom-4 left-4">
+    <ThemeToggle/>
+   </div>
+   <Mail
   defaultCollapsed={false}
   defaultLayout={[20, 32, 48]}
   navCollapsedSize={4}
   />
+  </>
 }
 
 export default page

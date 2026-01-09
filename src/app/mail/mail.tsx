@@ -14,6 +14,7 @@ import AccountSwitcher from "./account-switcher"
 import sidebar from "./sidebar"
 import Sidebar from "./sidebar"
 import ThreadList from "./threads-list"
+import ThreadDisplay from "./thread-display"
 
 type Props = {
   defaultLayout?: number[]
@@ -105,7 +106,7 @@ const Mail = ({
           </Tabs>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={defaultLayout[2]} minSize={30} > thread display</ResizablePanel>
+        <ResizablePanel defaultSize={defaultLayout[2]} minSize={30} > <ThreadDisplay/></ResizablePanel>
       </ResizablePanelGroup>
     </TooltipProvider>
   )
