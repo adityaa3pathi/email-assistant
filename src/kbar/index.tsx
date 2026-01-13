@@ -6,10 +6,13 @@ import { Children } from 'react'
 import { RenderResults } from './render-results'
 import { useAtom } from 'jotai'
 import { useLocalStorage } from 'usehooks-ts'
+import useThemeSwitching from './use-theme-switching'
+import useAccountSwitching from './use-account-switching'
 export default function KBar({children}: {children: React.ReactNode}) {
 
 
-    const [tab, setTab] = useLocalStorage('email-asistant', 'inbox')
+    const [tab, setTab] = useLocalStorage<'inbox' | 'draft' | 'sent' >('email-assistant-tab', 'inbox')
+    const [done, setDone] = useLocalStorage('email-assistant-done', false)
     const actions: Action[] = [
 
         {
@@ -20,20 +23,22 @@ export default function KBar({children}: {children: React.ReactNode}) {
             subtitle: 'View your inbox',
             perform: () => {
                 setTab('inbox')
+                console.log('set to inbox')
                 
             }
         },
             {
-            id: "draftsAction",
-            name: "Drafts",
+            id: "draftAction",
+            name: "Draft",
             shortcut: ['g', 'd'],
-            keywords: "drafts",
-            subtitle: "View your drafts",
-            section: "Navigation",
+            keywords: "draft",
+            section: 'Navigation',
+            subtitle: 'View your Draft',
             perform: () => {
                 setTab('draft')
-                console.log('set to drafts')    
-            },
+                console.log('set to draft')
+                
+            }
         },
         {
             id: "sentAction",
@@ -44,6 +49,30 @@ export default function KBar({children}: {children: React.ReactNode}) {
             subtitle: "View the sent",
             perform: () => {
                 setTab('sent')
+                console.log('set to sent')  
+
+            },
+        },
+         {
+            id: "pendingAction",
+            name: "See done",
+            shortcut: ['g', "d"],
+            keywords: "done",
+            section: "Navigation",
+            subtitle: "View the done emails",
+            perform: () => {
+                setDone(true)
+            },
+        },
+        {
+            id: "doneAction",
+            name: "See Pending",
+            shortcut: ['g', "u"],
+            keywords: 'pending, undone, not done',
+            section: "Navigation",
+            subtitle: "View the pending emails",
+            perform: () => {
+                setDone(false)
             },
         },
     ]
@@ -56,6 +85,9 @@ export default function KBar({children}: {children: React.ReactNode}) {
 } 
 
 const ActualComponent = ({children} : {children: React.ReactNode}) => {
+
+    useThemeSwitching()
+    useAccountSwitching()
 
     return <>
     <KBarPortal>

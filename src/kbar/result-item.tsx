@@ -13,6 +13,7 @@ const ResultItem = React.forwardRef(
             action: ActionImpl;
             active: boolean;
             currentRootActionId: ActionId;
+      
         },
         ref: React.Ref<HTMLDivElement>
     ) => {
@@ -29,15 +30,17 @@ const ResultItem = React.forwardRef(
                 ref={ref}
                 className={`px-4 py-3 flex items-center justify-between cursor-pointer relative z-10`}
             >
-                {active && (
-                    <motion.div layoutId='kbar-result-item' className='bg-gray-200 dark:bg-gray-700 border-l-4 border-black dark:border-white absolute inset-0 !z-[-1]' transition={{
-                        duration: 0.14,
-                        type: 'spring',
-                        ease: 'easeInOut',
-                    }}>
-
-                    </motion.div>
-                )}
+               {active && (
+  <motion.div
+    layoutId="kbar-result-item"
+    className="pointer-events-none bg-gray-200 dark:bg-gray-700 border-l-4 border-black dark:border-white absolute inset-0 -z-10"
+    transition={{
+      duration: 0.14,
+      type: "spring",
+      ease: "easeInOut",
+    }}
+  />
+)}
                 <div className="flex gap-2 items-center relative z-10">
                     {action.icon && action.icon}
                     <div className="flex flex-col">
