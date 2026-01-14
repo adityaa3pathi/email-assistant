@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/tooltip"
 import { format } from "date-fns"
 import EmailDisplay from "./email-display"
+import ReplyBox from "./reply-box"
 
 const ThreadDisplay = () => {
   const { threadId, threads } = useThreads()
@@ -177,7 +178,7 @@ const ThreadDisplay = () => {
           <Separator className="mt-auto" />
 
           {/* Reply box placeholder */}
-          {/* <ReplyBox /> */}
+           <ReplyBox /> 
         </div>
       ) : (
         <div className="p-8 text-center text-muted-foreground">
