@@ -16,23 +16,24 @@ const Sidebar: FC<sidebarProps> = ({isCollapsed}: sidebarProps) => {
     const [tab] = useLocalStorage<'inbox' | 'draft' | 'sent' >('email-assistant-tab', 'inbox')
     const [done] = useLocalStorage('email-assistant-done', false)
 
+    const {data: accounts} = api.account.getAccounts.useQuery()
+    const validAccountId = accounts?.some(a => a.id === accountId) ? accountId : ''
+
     const {data: inboxThreads} = api.account.getNumThreads.useQuery({
-      accountId,
+      accountId: validAccountId,
       tab: 'inbox',
       
-    }) 
+    }, { enabled: !!validAccountId }) 
     const {data: draftThreads} = api.account.getNumThreads.useQuery({
-      accountId,
+      accountId: validAccountId,
       tab: 'draft',
       
-    }) 
+    }, { enabled: !!validAccountId }) 
     const {data: sentThreads} = api.account.getNumThreads.useQuery({
-      accountId,
+      accountId: validAccountId,
       tab: 'sent',
       
-    }) 
-
-    console.log("sent thread count", sentThreads)
+    }, { enabled: !!validAccountId }) 
 
   return (
     

@@ -38,9 +38,15 @@ model Account {
 
   nextDeltaToken  String?
 
+  syncStatus   String?   // "pending" | "syncing" | "synced" | "failed"
+  syncError    String?
+  lastSyncedAt DateTime?
+
   user User @relation(fields: [userId], references: [id])
   emailAddresses EmailAddress[]
   threads        Thread[]
+
+  @@index([userId])
 }
 
 
@@ -51,7 +57,7 @@ model Thread {
     lastMessageDate DateTime
     participantIds  String[]
     accountId       String
-    account         Account  @relation(fields: [accountId], references: [id])
+    account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
     done Boolean @default(false)
 
@@ -72,7 +78,7 @@ model Thread {
 model Email {
     id                   String                @id @default(cuid())
     threadId             String
-    thread               Thread                @relation(fields: [threadId], references: [id])
+    thread               Thread                @relation(fields: [threadId], references: [id], onDelete: Cascade)
     createdTime          DateTime
     lastModifiedTime     DateTime
     sentAt               DateTime
@@ -127,7 +133,7 @@ model EmailAddress {
     replyToEmails Email[] @relation("ReplyToEmails")
 
     accountId String
-    account   Account @relation(fields: [accountId], references: [id])
+    account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
     @@unique([accountId, address])
 }
@@ -141,7 +147,7 @@ model EmailAttachment {
     contentId       String?
     content         String?
     contentLocation String?
-    Email           Email   @relation(fields: [emailId], references: [id])
+    Email           Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
     emailId         String
 }
 

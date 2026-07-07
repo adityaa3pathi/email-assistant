@@ -1,14 +1,11 @@
-import pLimit from "p-limit"
 import type { EmailMessage, EmailAddress, EmailAttachment } from "./types";
-import { Elsie } from "next/font/google";
-import type {  } from "@clerk/nextjs/server";
 import { db } from "@/server/db";
 import { Prisma } from "@prisma/client";
 
 
 async function syncEmailsToDatabase(emails: EmailMessage[], accountId: string) {
     console.log(`Syncing ${emails.length} emails to database`);
-    const limit = pLimit(10); // Process up to 10 emails concurrently
+
 
       try {
         // Promise.all(emails.map((emails, index) => upsertEmail(emails, accountId, index)))
@@ -16,9 +13,10 @@ async function syncEmailsToDatabase(emails: EmailMessage[], accountId: string) {
         for(const email of emails) {
             await upsertEmail(email, accountId, 0)
         }
-      }   
-catch (error) {
-    console.log('oopsies', error)
+      }
+ catch (error) {
+    console.error('Email sync failed:', error)
+    throw error
 }
 }
 
@@ -28,7 +26,7 @@ catch (error) {
 
 async function upsertEmail(email: EmailMessage, accountId: string, index: number) { //Turn raw email address strings into canonical database identities, once, and reuse them everywhere.
     console.log(`Upserting email ${index + 1}`, JSON.stringify(email, null, 2));
-    try {
+
 
         // determine email label type
         let emailLabelType: 'inbox' | 'sent' | 'draft' = 'inbox'
@@ -40,7 +38,7 @@ async function upsertEmail(email: EmailMessage, accountId: string, index: number
             emailLabelType = 'draft'
         }
 
-        // 1. Upsert EmailAddress records
+         // 1. Upsert EmailAddress records
         const addressesToUpsert = new Map()
         for (const address of [email.from, ...email.to, ...email.cc, ...email.bcc, ...email.replyTo]) {
             addressesToUpsert.set(address.address, address);
@@ -192,16 +190,10 @@ async function upsertEmail(email: EmailMessage, accountId: string, index: number
         });
 
         // 4. Upsert Attachments
-        for (const attachment of email.attachments) {
+        for (const attachment of (email.attachments || [])) {
             await upsertAttachment(email.id, attachment);
         }
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            console.log(`Prisma error for email ${email.id}: ${error.message}`);
-        } else {
-            console.log(`Unknown error for email ${email.id}: ${error}`);
-        }
-    }
+
 }
 
 async function upsertEmailAddress(address: EmailAddress, accountId: string) {
@@ -211,9 +203,7 @@ async function upsertEmailAddress(address: EmailAddress, accountId: string) {
         });
 
         if (existingAddress) {
-            return await db.emailAddress.findUnique({
-                where: { id: existingAddress.id },
-            });
+            return existingAddress;
         } else {
             return await db.emailAddress.create({
                 data: { address: address.address ?? "", name: address.name, raw: address.raw, accountId },
@@ -250,7 +240,8 @@ async function upsertAttachment(emailId: string, attachment: EmailAttachment) {
             },
         });
     } catch (error) {
-        console.log(`Failed to upsert attachment for email ${emailId}: ${error}`);
+        console.error(`Failed to upsert attachment for email ${emailId}:`, error)
+        throw error
     }
 }
 

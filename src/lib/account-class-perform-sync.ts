@@ -10,22 +10,29 @@ export class Account {
         
     }
 
-    private async startSync() {
+    async startSync(daysWithin?: number) {
+        let params: Record<string, string | number> = {
+            bodyType: 'html'
+        }
+        if (daysWithin !== undefined) {
+            params.daysWithin = daysWithin
+        }
+
         const response = await axios.post<SyncResponse>('https://api.aurinko.io/v1/email/sync', {}, {
             headers: {
-                Authorization: `Bearer ${this.token}` // the concept used here is called dependency injection as we are injectiong a dependency(token) 
+                Authorization: `Bearer ${this.token}`
             },
-            params: {
-                daysWithin: 2,
-                bodyType: 'html'
-            }
+            params,
+            timeout: 60000 // 60 second timeout
         })
         return response.data
     }
 
     async getUpdatedEmails({deltaToken, pageToken}: {deltaToken?: string, pageToken?: string }) {
 
-        let params: Record<string, string> = {}
+        let params: Record<string, string> = {
+            bodyType: 'html'
+        }
         if (deltaToken) params.deltaToken = deltaToken
         if (pageToken) params.pageToken = pageToken
     
@@ -33,18 +40,19 @@ export class Account {
         headers: {
             Authorization: `Bearer ${this.token}`
         },
-        params
+        params,
+        timeout: 60000 // 60 second timeout
     })
 
     return response.data
     }
 
-    async performInitialSync() {
+    async performInitialSync(daysWithin?: number) {
         try {
-            let syncResponse = await this.startSync()
+            let syncResponse = await this.startSync(daysWithin)
             while (!syncResponse.ready) {
-                await new Promise(resolve => setTimeout(resolve, 1000))
-                syncResponse = await  this.startSync()
+                await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2s between polls
+                syncResponse = await this.startSync(daysWithin)
             }
 
 
@@ -79,8 +87,11 @@ export class Account {
         }
         catch (error) {
         if (axios.isAxiosError(error)) {
-            console.log('Error during sync:', JSON.stringify(error.response?.data, null, 2))
-        } console.error('Unexpected error fetching account details', error)
+            console.error('Error during sync:', JSON.stringify(error.response?.data, null, 2))
+        } else {
+            console.error('Unexpected error during sync:', error)
+        }
+        throw error
     }
     }
 

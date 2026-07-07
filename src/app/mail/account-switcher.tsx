@@ -2,7 +2,7 @@ import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue  } from "
 import { getAurinkoAuthUrl } from "@/lib/actions"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
-import { Plus } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import React from "react"
 import  { useLocalStorage } from "usehooks-ts"
 
@@ -15,6 +15,15 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
 
     const { data } = api.account.getAccounts.useQuery()
     const [accountId, setAccountId] = useLocalStorage("accountId", '')
+    const utils = api.useUtils()
+    const deleteAccount = api.account.deleteAccount.useMutation({
+        onSuccess: () => {
+             utils.account.getAccounts.invalidate()
+        },
+        onError: (e) => {
+             alert(e.message)
+        }
+    })
 
 
     if(!data) return null
@@ -42,14 +51,30 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
             <SelectContent >
                 {data.map((account) => {
                     return (
-                        <SelectItem key={account.id} value={account.id}>
-                            {account.emailAddress}
-                        </SelectItem>
+                        <div key={account.id} className="relative flex w-full items-center">
+                            <SelectItem value={account.id} className="w-full pr-12">
+                                {account.emailAddress}
+                            </SelectItem>
+                            <div 
+                                className="absolute right-2 p-1 rounded-sm hover:bg-red-100 text-red-500 cursor-pointer z-50"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    if(confirm("Are you sure you want to delete this account?")) {
+                                        if (accountId === account.id) {
+                                            setAccountId('')
+                                        }
+                                        deleteAccount.mutate({ accountId: account.id })
+                                    }
+                                }}
+                            >
+                                <Trash2 className="size-4" />
+                            </div>
+                        </div>
                     )
                 })}
         <div
         onClick={ async () => {
-             const authUrl = await getAurinkoAuthUrl('Google')
+             const authUrl = await getAurinkoAuthUrl()
                console.log(authUrl)
                window.location.href = authUrl
         }}

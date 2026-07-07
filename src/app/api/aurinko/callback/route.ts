@@ -1,9 +1,8 @@
 import { exchangeCodeForAccessToken, getAccountDetails } from "@/lib/actions"
+import { inngest } from "@/inngest/client"
 import { db } from "@/server/db"
 import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
-import { waitUntil } from "@vercel/functions"
-import axios from "axios"
 
 
 export const GET = async (req: NextRequest) => {
@@ -14,7 +13,7 @@ export const GET = async (req: NextRequest) => {
         const params = req.nextUrl.searchParams
 
         const status = params.get('status')
-        if(status != "success") return NextResponse.json({message: 'failed to link account'}, {status: 400})
+        if(status && status != "success") return NextResponse.json({message: 'failed to link account'}, {status: 400})
 
 
             //getting code to exchange it for the access token 
@@ -28,36 +27,49 @@ export const GET = async (req: NextRequest) => {
 
     if(!accountDetails){
         console.error("failed to retrieve account details for token", token.accessToken)
-        return
+        return NextResponse.json({message: 'failed to retrieve account details'}, {status: 400})
     }
 
-    await db.account.upsert({
+    const accountName = accountDetails.name ?? accountDetails.email.split("@")[0] ?? accountDetails.email
+
+    // Check if this user already has an account with the same email — reuse it
+    const existingAccount = await db.account.findFirst({
         where: {
-            id: token.accountId.toString()
-        }, 
-        update: {
-            accessToken: token.accessToken,
-        },
-        create: {
-            id: token.accountId.toString(),
             userId,
             emailAddress: accountDetails.email,
-            name: accountDetails.name,
-            accessToken: token.accessToken,
-
         }
     })
 
-    waitUntil(
-        axios.post(`${process.env.NEXT_PUBLIC_URL}/api/initial-sync`, {
-            accountId: token.accountId.toString(),
-            userId
-        }).then(response => {
-            console.log('Initial sync triggered', response.data)
-        }).catch(error => {
-            console.log('failed to trigger initial sync', error)
+    if (existingAccount) {
+        // Update the existing account with the fresh token
+        await db.account.update({
+            where: { id: existingAccount.id },
+            data: {
+                accessToken: token.accessToken,
+                name: accountName,
+            }
         })
-    )
+    } else {
+        // Create a new account
+        await db.account.create({
+            data: {
+                id: token.accountId.toString(),
+                userId,
+                emailAddress: accountDetails.email,
+                name: accountName,
+                accessToken: token.accessToken,
+                syncStatus: "pending",
+            }
+        })
+    }
+
+    const accountId = existingAccount?.id ?? token.accountId.toString()
+
+    // Enqueue sync as a background job — redirect user IMMEDIATELY
+    await inngest.send({
+        name: "email/sync.initial",
+        data: { accountId, userId }
+    })
 
     return NextResponse.redirect(new URL('/mail', req.url))
 }

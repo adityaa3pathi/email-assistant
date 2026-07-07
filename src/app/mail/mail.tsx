@@ -16,6 +16,8 @@ import Sidebar from "./sidebar"
 import ThreadList from "./threads-list"
 import ThreadDisplay from "./thread-display"
 
+import { useLocalStorage } from "usehooks-ts"
+
 type Props = {
   defaultLayout?: number[]
   navCollapsedSize: number
@@ -28,6 +30,9 @@ const Mail = ({
   defaultCollapsed,
 }: Props) => {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed)
+  const [tab] = useLocalStorage<'inbox' | 'draft' | 'sent'>('email-assistant-tab', 'inbox')
+  const [done, setDone] = useLocalStorage('email-assistant-done', false)
+
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -77,10 +82,14 @@ const Mail = ({
 
         {/* Thread list */}
         <ResizablePanel defaultSize={defaultLayout[1]} minSize={30}>
-          <Tabs defaultValue="inbox" className="h-full">
+          <Tabs 
+            value={done ? "done" : "inbox"} 
+            onValueChange={(v) => setDone(v === "done")} 
+            className="h-full"
+          >
             {/* Tabs header */}
             <div className="flex items-center px-4 py-2">
-              <h1 className="text-xl font-bold">Inbox</h1>
+              <h1 className="text-xl font-bold capitalize">{tab}</h1>
               <TabsList className="ml-auto">
                 <TabsTrigger
                   value="inbox"
@@ -88,18 +97,18 @@ const Mail = ({
                 >
                   Inbox
                 </TabsTrigger>
-                <TabsTrigger value="" className="text-zinc-800 dark:text-zinc-200" >
+                <TabsTrigger value="done" className="text-zinc-800 dark:text-zinc-200" >
                     Done
                 </TabsTrigger>
               </TabsList>
             </div>
 
             <Separator />
-            Search Bar
-            <TabsContent value="inbox">
+            <div className="p-4 py-2 border-b text-sm text-muted-foreground">Search Bar</div>
+            <TabsContent value="inbox" className="m-0">
                <ThreadList/>
             </TabsContent>
-            <TabsContent value="done">
+            <TabsContent value="done" className="m-0">
                <ThreadList/>
             </TabsContent>
         
