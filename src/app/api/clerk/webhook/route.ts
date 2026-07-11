@@ -11,6 +11,7 @@ type ClerkUserWebhook = {
 
 
 export const POST  = async (req: Request) => {
+  try {
     const{ data } :  {data: ClerkUserWebhook}= await req.json()
     console.log('clerk webhook received', data)
 
@@ -33,4 +34,9 @@ export const POST  = async (req: Request) => {
       console.log("Created user:", user);
 
     return new Response('webhook received', {status: 200})
-}
+
+  }
+
+catch(error) {
+  console.log("error", error)
+}}

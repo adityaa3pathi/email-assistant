@@ -18,6 +18,9 @@ const EmailDisplay = ({email}: Props) => {
     
     const {account} = useThreads() 
     const isMe = account?.emailAddress === email.from.address   
+    const html = email.body?.trim()
+    const fallbackText = email.bodySnippet?.trim()
+
     return (
         <div  className={
             cn('border rounded-md p-4 transition-all hover:translate-x-2', {
@@ -41,7 +44,15 @@ const EmailDisplay = ({email}: Props) => {
 
             <div className="h-4">
             </div>
-            <Letter html={email?.body ?? ''} className="'bg-white rounded-md text-black" />
+            {html ? (
+                <Letter html={html} className="rounded-md bg-white text-black" />
+            ) : fallbackText ? (
+                <p className="whitespace-pre-wrap rounded-md bg-white p-3 text-sm text-black">
+                    {fallbackText}
+                </p>
+            ) : (
+                <p className="text-sm text-muted-foreground">No body available for this email.</p>
+            )}
                 
         </div>
     )

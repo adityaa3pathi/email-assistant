@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client"
-import { db } from "@/server/db";
+import { db } from "../src/server/db";
+
 
 async function main() {
   console.log("Running isolated script...");

@@ -7,7 +7,7 @@ import React from 'react'
 const LinkAccountButton = ({}) => {
   return (
   <button onClick={async () => {
-    const authUrl = await getAurinkoAuthUrl('Google')
+    const authUrl = await getAurinkoAuthUrl()
     console.log(authUrl)
     window.location.href = authUrl
   }}>
