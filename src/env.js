@@ -8,12 +8,8 @@ export const env = createEnv({
    */
   server: {
     DATABASE_URL: z.string().url(),
-    AURINKO_CLIENT_ID: z.string().min(1),
-    AURINKO_CLIENT_SECRET: z.string().min(1),
-    AURINKO_SIGNING_SECRET: z.string().min(1).optional(),
-    AURINKO_SERVICE_TYPE: z.enum(["Google", "Office365", "IMAP"]).default("Google"),
-    AURINKO_AUTH_PROVIDER: z.string().optional(),
-    AURINKO_SCOPES: z.string().optional(),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -34,12 +30,8 @@ export const env = createEnv({
    */
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
-    AURINKO_CLIENT_ID: process.env.AURINKO_CLIENT_ID,
-    AURINKO_CLIENT_SECRET: process.env.AURINKO_CLIENT_SECRET,
-    AURINKO_SIGNING_SECRET: process.env.AURINKO_SIGNING_SECRET,
-    AURINKO_SERVICE_TYPE: process.env.AURINKO_SERVICE_TYPE,
-    AURINKO_AUTH_PROVIDER: process.env.AURINKO_AUTH_PROVIDER,
-    AURINKO_SCOPES: process.env.AURINKO_SCOPES,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,
   },

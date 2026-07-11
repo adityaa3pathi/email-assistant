@@ -1,5 +1,5 @@
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue  } from "@/components/ui/select"
-import { getAurinkoAuthUrl } from "@/lib/actions"
+import { getGoogleAuthUrl } from "@/lib/actions"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
 import { Plus, Trash2 } from "lucide-react"
@@ -74,7 +74,7 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
                 })}
         <div
         onClick={ async () => {
-             const authUrl = await getAurinkoAuthUrl()
+             const authUrl = await getGoogleAuthUrl()
                console.log(authUrl)
                window.location.href = authUrl
         }}

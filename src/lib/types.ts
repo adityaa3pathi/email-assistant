@@ -1,16 +1,5 @@
 import { z } from "zod";
 
-export interface SyncResponse {
-    syncUpdatedToken: string;
-    syncDeletedToken: string;
-    ready: boolean;
-}
-export interface SyncUpdatedResponse {
-    nextPageToken?: string;
-    nextDeltaToken: string;
-    records: EmailMessage[];
-}
-
 export const emailAddressSchema = z.object({
     name: z.string(),
     address: z.string(),
