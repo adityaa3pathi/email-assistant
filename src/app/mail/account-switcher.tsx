@@ -72,16 +72,7 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
                         </div>
                     )
                 })}
-        <div
-        onClick={ async () => {
-             const authUrl = await getGoogleAuthUrl()
-               console.log(authUrl)
-               window.location.href = authUrl
-        }}
-        className='flex relative hover:bg-gray-50 w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent'>
-            <Plus className="size-4 mr-1"/>
-            Add Account
-        </div>
+        <AddAccountButton />
             </SelectContent>
 
             
@@ -90,4 +81,36 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
     )
 }
 
+const AddAccountButton = () => {
+    const [isLinking, setIsLinking] = React.useState(false)
+
+    return (
+        <div
+            onClick={async () => {
+                if (isLinking) return
+                setIsLinking(true)
+                try {
+                    const authUrl = await getGoogleAuthUrl()
+                    window.location.href = authUrl
+                } catch (error) {
+                    console.error('Failed to get auth URL:', error)
+                    setIsLinking(false)
+                }
+            }}
+            className='flex relative hover:bg-gray-50 dark:hover:bg-gray-800 w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent'
+        >
+            {isLinking ? (
+                <svg className="size-4 mr-1 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+            ) : (
+                <Plus className="size-4 mr-1"/>
+            )}
+            {isLinking ? 'Connecting...' : 'Add Account'}
+        </div>
+    )
+}
+
 export default AccountSwitcher
+
