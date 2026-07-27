@@ -1,11 +1,20 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
-import { initialSyncJob, historicalSyncJob } from "@/inngest/functions";
+import {
+  initialSyncJob,
+  historicalSyncJob,
+  summarizeThreadsJob,
+  classifyThreadsJob,
+  generateEmbeddingsJob,
+} from "@/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
     initialSyncJob,
     historicalSyncJob,
+    summarizeThreadsJob,
+    classifyThreadsJob,
+    generateEmbeddingsJob,
   ],
 });
