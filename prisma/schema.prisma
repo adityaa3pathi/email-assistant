@@ -5,16 +5,14 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
-   
-
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-
-  
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -67,6 +65,9 @@ model Thread {
     draftStatus Boolean @default(false)
     sentStatus  Boolean @default(false)
 
+    summary     String?   // AI-generated one-line summary
+    aiLabels    String[]  // AI-classified tags: "urgent", "newsletter", etc.
+
     emails Email[]
 
     @@index([accountId])
@@ -112,6 +113,9 @@ model Email {
 
     emailLabel EmailLabel @default(inbox)
 
+    summary    String?          // AI-generated email summary
+    embedding  EmailEmbedding?  // Vector embedding for RAG search
+
     @@index([threadId])
     @@index([emailLabel])
     @@index([sentAt])
@@ -151,6 +155,17 @@ model EmailAttachment {
     contentLocation String?
     Email           Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
     emailId         String
+}
+
+model EmailEmbedding {
+    id        String @id @default(cuid())
+    emailId   String @unique
+    email     Email  @relation(fields: [emailId], references: [id], onDelete: Cascade)
+    accountId String
+    content   String // The text that was embedded (subject + body snippet)
+    // Vector column (embedding vector(768)) added via raw SQL migration
+
+    @@index([accountId])
 }
 
 enum Sensitivity {

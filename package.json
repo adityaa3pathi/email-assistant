@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.24",
     "@clerk/nextjs": "^6.35.5",
     "@prisma/client": "^6.7.0",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -41,6 +42,7 @@
     "@trpc/server": "^11.0.0",
     "@types/dompurify": "^3.2.0",
     "@vercel/functions": "^3.3.4",
+    "ai": "^7.0.37",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
