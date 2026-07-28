@@ -15,6 +15,8 @@ import sidebar from "./sidebar"
 import Sidebar from "./sidebar"
 import ThreadList from "./threads-list"
 import ThreadDisplay from "./thread-display"
+import SearchBar from "./search-bar"
+import AIChatPanel from "./ai-chat-panel"
 
 import { useLocalStorage } from "usehooks-ts"
 
@@ -74,7 +76,7 @@ const Mail = ({
             <Sidebar isCollapsed={isCollapsed}/>
             <div className="flex-1"></div>
             {/* Ask AI */}
-            <div className="px-2 pb-2">Ask AI</div>
+            <AIChatPanel />
           </div>
         </ResizablePanel>
 
@@ -104,7 +106,7 @@ const Mail = ({
             </div>
 
             <Separator />
-            <div className="p-4 py-2 border-b text-sm text-muted-foreground">Search Bar</div>
+            <SearchBar />
             <TabsContent value="inbox" className="m-0">
                <ThreadList/>
             </TabsContent>

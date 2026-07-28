@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { EmailLabel, type Prisma } from "@prisma/client";
 import { sendStatusCode } from "next/dist/server/api-utils";
 import z from "zod";
+import { searchSimilarEmails } from "@/lib/embeddings";
 
 
 export const authorizeAccountAccess = async (accountId: string, userId: string) => {
@@ -172,6 +173,15 @@ getReplyDetails: privateProcedure.input(z.object({
     id: lastExternalEmail.internetMessageId
     }
 
+}),
+
+semanticSearch: privateProcedure.input(z.object({
+    accountId: z.string(),
+    query: z.string().min(3),
+})).query(async ({ctx, input}) => {
+    const account = await authorizeAccountAccess(input.accountId, ctx.auth.userId)
+    const results = await searchSimilarEmails(account.id, input.query, 10)
+    return results
 }),
 
 deleteAccount: privateProcedure.input(z.object({

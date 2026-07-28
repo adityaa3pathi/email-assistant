@@ -68,8 +68,8 @@ return (
     to={replyDetails.to.map((to) => to.address)}
     handleSend={handleSend}
     isSending={false}
-
-
+    threadId={threadId}
+    accountId={accountId}
   />
 )
 }

@@ -4,7 +4,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import { StarterKit } from '@tiptap/starter-kit'
 import React from 'react'
 import { Text } from '@tiptap/extension-text'
-import { useCompletion } from 'ai/react'
+import { useCompletion } from '@ai-sdk/react'
 import EditorMenuBar from './editor-menubar'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -27,9 +27,11 @@ type Props = {
     isSending: boolean
 
     defaultToolbarExpanded?: boolean
+    threadId?: string | null
+    accountId?: string
 }
 
-const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, setCcValues, to, handleSend, isSending, defaultToolbarExpanded }: Props) => {
+const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, setCcValues, to, handleSend, isSending, defaultToolbarExpanded, threadId, accountId }: Props) => {
 
     const [value, setValue] = React.useState('')
     const [expanded, setExpanded] = React.useState(defaultToolbarExpanded || false)
@@ -44,31 +46,24 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
 
     // Track the previous completion length so we only insert NEW tokens
     const prevCompletionLenRef = React.useRef(0)
+    // Ref to hold the editor instance for use in callbacks defined before useEditor
+    const editorRef = React.useRef<ReturnType<typeof useEditor>>(null)
 
-    React.useEffect(() => {
-        if (!editor || !completion) return
-
-        // Insert only the newly streamed portion
-        const newText = completion.slice(prevCompletionLenRef.current)
-        if (newText) {
-            editor.commands.insertContent(newText)
-            prevCompletionLenRef.current = completion.length
-        }
-    }, [completion])
-
-    // Reset tracking when a new completion starts
     const triggerAiComplete = React.useCallback(() => {
-        if (!editor) return
+        const ed = editorRef.current
+        if (!ed) return
         prevCompletionLenRef.current = 0
 
-        const currentContent = editor.getText()
+        const currentContent = ed.getText()
         complete(currentContent, {
             body: {
                 context: currentContent,
                 threadSubject: subject,
+                threadId: threadId ?? undefined,
+                accountId: accountId ?? undefined,
             },
         })
-    }, [editor, complete, subject])
+    }, [complete, subject, threadId, accountId])
 
     const customText = Text.extend({
         addKeyboardShortcuts() {
@@ -96,6 +91,20 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
             setValue(editor.getHTML())
         }
     })
+
+    // Keep the ref in sync with the editor instance
+    editorRef.current = editor
+
+    React.useEffect(() => {
+        if (!editor || !completion) return
+
+        // Insert only the newly streamed portion
+        const newText = completion.slice(prevCompletionLenRef.current)
+        if (newText) {
+            editor.commands.insertContent(newText)
+            prevCompletionLenRef.current = completion.length
+        }
+    }, [completion, editor])
 
     if (!editor) {
         return null

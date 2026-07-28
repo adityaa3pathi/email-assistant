@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.24",
+    "@ai-sdk/react": "^4.0.43",
     "@clerk/nextjs": "^6.35.5",
     "@prisma/client": "^6.7.0",
     "@radix-ui/react-avatar": "^1.1.11",
