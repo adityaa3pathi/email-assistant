@@ -1,15 +1,23 @@
-import Link from "next/link";
-
-import { LatestPost } from "@/app/_components/post";
-import { api, HydrateClient } from "@/trpc/server";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { db } from "@/server/db";
 import LinkAccountButton from "./_components/link-account-button";
 
 export default async function Home() {
-  // const hello = await api.post.hello({ text: "from tRPC" });
+  const { userId } = await auth();
 
-  void api.post.getLatest.prefetch();
+  // If the user is signed in, check if they have a linked Google account
+  if (userId) {
+    const account = await db.account.findFirst({
+      where: { userId },
+      select: { id: true },
+    });
 
-  return <LinkAccountButton/>
-  
+    // If they already have an account linked, send them straight to /mail
+    if (account) {
+      redirect("/mail");
+    }
+  }
 
+  return <LinkAccountButton />;
 }

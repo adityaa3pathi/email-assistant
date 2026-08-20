@@ -49,9 +49,9 @@ const ThreadDisplay = () => {
   const thread = threads?.find((t) => t.id === threadId)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full min-w-0 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center p-2">
+      <div className="flex items-center p-2 shrink-0">
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -142,11 +142,11 @@ const ThreadDisplay = () => {
 
       {/* Body */}
       {thread ? (
-        <div className="flex flex-col flex-1 overflow-scroll">
+        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
           {/* Thread Header */}
-          <div className="flex items-start p-4">
-            <div className="flex items-start gap-4 text-sm">
-              <Avatar className="h-10 w-10">
+          <div className="flex items-start p-4 min-w-0 gap-4">
+            <div className="flex items-start gap-4 text-sm min-w-0 flex-1">
+              <Avatar className="h-10 w-10 shrink-0">
                 <AvatarImage alt="avatar" />
                 <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white text-xs font-medium">
                   {thread.emails[0]?.from?.name
@@ -156,28 +156,28 @@ const ThreadDisplay = () => {
                 </AvatarFallback>
               </Avatar>
 
-              <div className="grid gap-1">
-                <div className="font-semibold">
+              <div className="grid gap-1 min-w-0 flex-1">
+                <div className="font-semibold truncate">
                   {thread.emails[0]?.from?.name}
                 </div>
-                <div className="text-xs line-clamp-1 font-medium">
+                <div className="text-xs line-clamp-2 font-medium break-words [overflow-wrap:anywhere]">
                   {thread.subject}
                 </div>
-                <div className="text-xs line-clamp-1 text-muted-foreground">
+                <div className="text-xs truncate text-muted-foreground">
                   <span className="font-medium">Reply-To:</span>{" "}
                   {thread.emails[0]?.from?.address}
                 </div>
               </div>
             </div>
 
-            <div className="ml-auto flex flex-col items-end gap-2">
+            <div className="ml-auto flex flex-col items-end gap-2 shrink-0">
               {thread.emails[0]?.sentAt && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
                   {format(new Date(thread.emails[0].sentAt), "PPpp")}
                 </div>
               )}
               {/* Email count badge */}
-              <div className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              <div className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full whitespace-nowrap">
                 {thread.emails.length} {thread.emails.length === 1 ? "email" : "emails"}
               </div>
             </div>
@@ -185,9 +185,9 @@ const ThreadDisplay = () => {
 
           {/* ── AI Insights Card ────────────────────────────────────────── */}
           {(thread.summary || (thread.aiLabels && thread.aiLabels.length > 0)) && (
-            <div className="mx-4 mb-3 rounded-lg border bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-teal-500/5 p-3">
+            <div className="mx-4 mb-3 rounded-lg border bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-teal-500/5 p-3 min-w-0 overflow-hidden">
               <div className="flex items-center gap-1.5 mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                 <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
                   AI Insights
                 </span>
@@ -195,14 +195,14 @@ const ThreadDisplay = () => {
 
               {/* Summary */}
               {thread.summary && (
-                <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                <p className="text-xs text-muted-foreground leading-relaxed mb-2 break-words [overflow-wrap:anywhere]">
                   {thread.summary}
                 </p>
               )}
 
               {/* AI Labels */}
               {thread.aiLabels && thread.aiLabels.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                   {thread.aiLabels.map((label: string) => (
                     <span
                       key={label}
@@ -222,8 +222,8 @@ const ThreadDisplay = () => {
           <Separator />
 
           {/* Emails */}
-          <div className="max-h-[calc(100vh-500px)] overflow-scroll">
-            <div className="p-6 flex flex-col gap-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+            <div className="p-6 flex flex-col gap-4 min-w-0 w-full">
               {thread.emails.map((email) => (
                 <EmailDisplay key={email.id} email={email} />
               ))}
@@ -232,10 +232,12 @@ const ThreadDisplay = () => {
 
           <div className="flex-1" />
 
-          <Separator className="mt-auto" />
+          <Separator className="mt-auto shrink-0" />
 
           {/* Reply box */}
-           <ReplyBox /> 
+          <div className="shrink-0 min-w-0">
+            <ReplyBox /> 
+          </div>
         </div>
       ) : (
         /* ── Empty State ──────────────────────────────────────────────── */

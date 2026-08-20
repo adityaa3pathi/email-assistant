@@ -65,7 +65,9 @@ export const initialSyncJob = inngest.createFunction(
     try {
       fetchResult = await step.run("fetch-emails", async () => {
         const gmailAccount = new GmailAccount(accountId);
-        const result = await gmailAccount.fetchEmails(7);
+        // Fetch last 3 days (not 7) to keep memory usage low on first sync.
+        // The historical backfill job will catch the rest.
+        const result = await gmailAccount.fetchEmails(3);
         console.log(
           `[inngest:initial-sync] Fetched ${result.emails.length} emails for account ${accountId}`,
         );

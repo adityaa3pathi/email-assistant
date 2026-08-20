@@ -105,11 +105,25 @@ export const GET = async (req: NextRequest) => {
     );
   }
 
-  // ── Trigger initial sync ───────────────────────────────────────────────
-  await inngest.send({
-    name: "email/sync.initial",
-    data: { accountId, userId },
-  });
+  // ── Trigger initial sync via Inngest (background, memory-safe) ────────
+  // NOTE: We intentionally do NOT run sync inline here. On low-memory
+  // systems, fetching + MIME-parsing hundreds of emails in the Next.js
+  // server process causes OOM / swap thrashing. Inngest handles this
+  // in durable background steps with controlled batching.
+  try {
+    await inngest.send({
+      name: "email/sync.initial",
+      data: { accountId, userId },
+    });
+    console.log(
+      `[google/callback] Queued Inngest initial sync for account ${accountId}`,
+    );
+  } catch (err) {
+    console.warn(
+      "[google/callback] Warning: Could not trigger Inngest initial sync (is Inngest dev server running?):",
+      err,
+    );
+  }
 
   return NextResponse.redirect(new URL("/mail", req.url));
 };

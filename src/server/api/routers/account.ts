@@ -167,7 +167,7 @@ getReplyDetails: privateProcedure.input(z.object({
 
     return {
     subject: lastExternalEmail.subject,
-    to: [lastExternalEmail.from], ...lastExternalEmail.to.filter(to => to.address !== account.emailAddress),
+    to: [lastExternalEmail.from, ...lastExternalEmail.to.filter(to => to.address !== account.emailAddress)],
     cc: lastExternalEmail.cc.filter(cc => cc.address !== account.emailAddress),
     from: {name: account.name, address: account.emailAddress},
     id: lastExternalEmail.internetMessageId

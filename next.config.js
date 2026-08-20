@@ -11,7 +11,10 @@ const config = {
     },
     eslint: {
         ignoreDuringBuilds: true
-    }
+    },
+    experimental: {
+        optimizePackageImports: ["lucide-react", "@radix-ui/react-avatar", "@radix-ui/react-dropdown-menu", "date-fns"],
+    },
 };
 
 export default config;

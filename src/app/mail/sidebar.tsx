@@ -1,6 +1,6 @@
 
 
-import { FC } from 'react'
+import type { FC } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 import { Nav } from './nav'
 import { File, Inbox, Send } from 'lucide-react'

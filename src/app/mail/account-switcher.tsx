@@ -27,9 +27,10 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
 
 
     if(!data) return null
-    return (
+    const currentAccountId = accountId || data[0]?.id || ""
 
-        <Select defaultValue={accountId} onValueChange={setAccountId}>
+    return (
+        <Select value={currentAccountId} onValueChange={setAccountId}>
             <SelectTrigger
           className={cn(
             "flex w-full flex-1 items-center gap-2 [&>span]:line-clamp-1 [&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:gap-1 [&>span]:truncate [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
@@ -41,10 +42,10 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
 
                 <SelectValue placeholder="Select an Account">
                     <span className={cn({ 'hidden': !isCollapsed})}>
-                        {data.find(account => account.id === accountId)?.emailAddress[0]}
+                        {data.find(account => account.id === currentAccountId)?.emailAddress[0]}
                     </span>
                     <span className={cn({ 'hidden': isCollapsed, 'ml-2': true })}>
-                            {data.find(account => account.id === accountId)?.emailAddress}
+                            {data.find(account => account.id === currentAccountId)?.emailAddress}
                     </span>
                 </SelectValue>
             </SelectTrigger>

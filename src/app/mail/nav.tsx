@@ -72,20 +72,19 @@ export function Nav({ links, isCollapsed }: NavProps) {
                 buttonVariants({ variant: link.variant, size: "sm" }),
                 link.variant === "default" &&
                 "dark:bg-muted dark:text-white dark:hover:bg-muted dark:hover:text-white",
-                "justify-start cursor-pointer"
+                "justify-start cursor-pointer w-full min-w-0 overflow-hidden"
               )}
             >
-              <link.icon className="w-4 h-4 mr-2" />
-              {link.title}
+              <link.icon className="w-4 h-4 mr-2 shrink-0" />
+              <span className="truncate flex-1">{link.title}</span>
               {link.label && (
                 <span
                   className={cn(
-                    "ml-auto",
+                    "ml-auto shrink-0",
                     link.variant === "default" &&
                     "text-background dark:text-white"
                   )}
                 >
-                  
                   {link.label}
                 </span>
               )}

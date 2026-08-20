@@ -23,15 +23,9 @@ const TagInput = ({ placerholder, label, onChange, value}: Props) => {
       const [inputValue, setInputValue] = React.useState('')
 
     const options = suggestions?.map((suggestion) => ({
-            label: (
-              <span className='flex items-center gap-2'>
-                  <Avatar name={suggestion.address} size='25' textSizeRatio={2} round={true}/>
-                  {suggestion.address}
-              </span>
-            ),
-            value: suggestion.address
-    })
-    ) || []
+      label: suggestion.address,
+      value: suggestion.address
+    })) || []
   return (
     <div className='border rounded-md flex items-center'>
             <span className='mt-3 text-sm text-gray-500'>
@@ -39,15 +33,18 @@ const TagInput = ({ placerholder, label, onChange, value}: Props) => {
             </span>
             <Select
             onInputChange={setInputValue}
-          //@ts-ignore
-            onChange={onChange}
+            onChange={(values) => onChange?.(values as { label: string; value: string }[])}
              value={value} 
              className='W-FULL flex-1  '
-            options={inputValue ? options?.concat([{label: inputValue, value: inputValue}]) : options}
+            options={inputValue ? options.concat([{label: inputValue, value: inputValue}]) : options}
             placeholder={placerholder}
             isMulti
-          
-       
+            formatOptionLabel={(option: { label: string; value: string }) => (
+              <span className='flex items-center gap-2'>
+                <Avatar name={option.value} size='25' textSizeRatio={2} round={true}/>
+                {option.label}
+              </span>
+            )}
             classNames={{
                 control: () => {
                     return '!border-none !outline-none !ring-0 !shadow-none focus:border-none focus:outline-none focus:ring-0 focus:shadow-none dark:bg-transparent'

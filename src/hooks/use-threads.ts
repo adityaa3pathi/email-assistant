@@ -13,18 +13,19 @@ const useThreads = () => {
     const [done] = useLocalStorage("email-assistant-done", false)
     const [threadId, setThreadId] = useAtom(threadAtom)
 
-    // Auto-correct stale accountId if the stored account no longer exists
+    // Auto-select first account if stored accountId is empty or no longer exists
     useEffect(() => {
-        if (accounts && accountId) {
+        if (accounts && accounts.length > 0) {
             const exists = accounts.some(a => a.id === accountId)
-            if (!exists) {
-                // Switch to first available account, or clear
-                setAccountId(accounts.length > 0 ? accounts[0]!.id : '')
+            if (!accountId || !exists) {
+                setAccountId(accounts[0]!.id)
             }
         }
     }, [accounts, accountId, setAccountId])
 
-    const validAccountId = accounts?.some(a => a.id === accountId) ? accountId : ''
+    const validAccountId = accounts?.some(a => a.id === accountId) 
+        ? accountId 
+        : (accounts?.[0]?.id ?? '')
 
     const {data: threads, isFetching, refetch} = api.account.getThreads.useQuery({
         accountId: validAccountId,

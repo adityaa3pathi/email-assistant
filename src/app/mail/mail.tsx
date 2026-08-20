@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import AccountSwitcher from "./account-switcher"
-import sidebar from "./sidebar"
 import Sidebar from "./sidebar"
 import ThreadList from "./threads-list"
 import ThreadDisplay from "./thread-display"
@@ -42,7 +41,7 @@ const Mail = ({
         direction="horizontal"
         onLayout={(sizes: number[]) => {
           setIsCollapsed(
-            sizes[0] === navCollapsedSize || sizes[0] === 0
+            sizes[0] === navCollapsedSize || sizes[0] === 0 || (sizes[0] !== undefined && sizes[0] < 10)
           )
         }}
         className="h-full min-h-screen items-stretch"
@@ -52,7 +51,7 @@ const Mail = ({
           defaultSize={defaultLayout[0]}
           collapsedSize={navCollapsedSize}
           collapsible
-          minSize={15}
+          minSize={12}
           maxSize={40}
           className={cn(
             isCollapsed &&
@@ -83,14 +82,14 @@ const Mail = ({
         <ResizableHandle withHandle />
 
         {/* Thread list */}
-        <ResizablePanel defaultSize={defaultLayout[1]} minSize={30}>
+        <ResizablePanel defaultSize={defaultLayout[1]} minSize={25} className="min-w-0 overflow-hidden">
           <Tabs 
             value={done ? "done" : "inbox"} 
             onValueChange={(v) => setDone(v === "done")} 
-            className="h-full"
+            className="h-full flex flex-col min-w-0 w-full overflow-hidden"
           >
             {/* Tabs header */}
-            <div className="flex items-center px-4 py-2">
+            <div className="flex items-center px-4 py-2 shrink-0">
               <h1 className="text-xl font-bold capitalize">{tab}</h1>
               <TabsList className="ml-auto">
                 <TabsTrigger
@@ -106,18 +105,22 @@ const Mail = ({
             </div>
 
             <Separator />
-            <SearchBar />
-            <TabsContent value="inbox" className="m-0">
+            <div className="shrink-0">
+              <SearchBar />
+            </div>
+            <TabsContent value="inbox" className="m-0 flex-1 min-w-0 overflow-hidden">
                <ThreadList/>
             </TabsContent>
-            <TabsContent value="done" className="m-0">
+            <TabsContent value="done" className="m-0 flex-1 min-w-0 overflow-hidden">
                <ThreadList/>
             </TabsContent>
         
           </Tabs>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={defaultLayout[2]} minSize={30} > <ThreadDisplay/></ResizablePanel>
+        <ResizablePanel defaultSize={defaultLayout[2]} minSize={30} className="min-w-0 overflow-hidden">
+          <ThreadDisplay/>
+        </ResizablePanel>
       </ResizablePanelGroup>
     </TooltipProvider>
   )

@@ -45,3 +45,6 @@ yarn-error.log*
 # idea files
 .idea
 /generated/prisma
+
+# cloudflared binary
+cloudflared-linux-amd64.deb

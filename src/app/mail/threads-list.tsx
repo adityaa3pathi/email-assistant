@@ -33,8 +33,8 @@ const ThreadList = () => {
   }, {} as Record<string, typeof threads>)
 
   return (
-    <div className="max-w-full overflow-y-scroll max-h-[calc(100vh-120px)]">
-      <div className="flex flex-col gap-2 p-4 pt-0">
+    <div className="w-full max-w-full overflow-y-auto overflow-x-hidden max-h-[calc(100vh-120px)]">
+      <div className="flex flex-col gap-2 p-4 pt-0 w-full min-w-0">
         {Object.entries(groupedThreads ?? {}).map(([date, threads]) => (
           <React.Fragment key={date}>
             {/* Date header */}
@@ -50,19 +50,19 @@ const ThreadList = () => {
                   key={thread.id}
                   onClick={() => setThreadId(thread.id)}
                   className={cn(
-                    "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all relative",
+                    "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all relative w-full min-w-0 max-w-full overflow-hidden",
                     thread.id === threadId && "bg-accent"
                   )}
                 >
-                  <div className="flex flex-col w-full gap-1">
-                    <div className="flex items-center">
-                      <div className="font-semibold">
-                        {lastEmail?.from?.name}
+                  <div className="flex flex-col w-full min-w-0 gap-1">
+                    <div className="flex items-center w-full min-w-0 gap-2">
+                      <div className="font-semibold truncate min-w-0 flex-1">
+                        {lastEmail?.from?.name || lastEmail?.from?.address}
                       </div>
 
                       <div
                         className={cn(
-                          "ml-auto text-xs",
+                          "ml-auto text-xs shrink-0 whitespace-nowrap",
                           thread.id === threadId
                             ? "text-foreground"
                             : "text-muted-foreground"
@@ -75,20 +75,20 @@ const ThreadList = () => {
                       </div>
                     </div>
 
-                    <div className="text-xs font-medium">
+                    <div className="text-xs font-medium truncate w-full min-w-0">
                       {thread.subject}
                     </div>
                   </div>
 
                   {/* AI Summary or body snippet */}
                   {thread.summary ? (
-                    <div className="text-xs line-clamp-2 text-muted-foreground flex items-start gap-1.5">
+                    <div className="text-xs line-clamp-2 text-muted-foreground flex items-start gap-1.5 w-full min-w-0 break-words [overflow-wrap:anywhere]">
                       <Sparkles className="w-3 h-3 text-purple-400 mt-0.5 shrink-0" />
-                      <span>{thread.summary}</span>
+                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{thread.summary}</span>
                     </div>
                   ) : (
                     <div
-                      className="text-xs line-clamp-2 text-muted-foreground"
+                      className="text-xs line-clamp-2 text-muted-foreground w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-hidden"
                       dangerouslySetInnerHTML={{
                         __html: DOMPurify.sanitize(
                           lastEmail?.bodySnippet ?? "",
@@ -99,7 +99,7 @@ const ThreadList = () => {
                   )}
 
                   {/* AI Labels + System Labels */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap w-full min-w-0">
                     {/* AI classification labels */}
                     {thread.aiLabels?.map((label: string) => (
                       <span
