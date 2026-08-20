@@ -37,8 +37,12 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
     const [expanded, setExpanded] = React.useState(defaultToolbarExpanded || false)
 
     // ─── AI Autocomplete ─────────────────────────────────────────────────
-    const { complete, completion, isLoading: isAiLoading, stop } = useCompletion({
+    const { complete, completion, isLoading: isAiLoading, stop, setCompletion } = useCompletion({
         api: '/api/ai/autocomplete',
+        onResponse: () => {
+            prevCompletionLenRef.current = 0
+            editorRef.current?.commands.focus('end')
+        },
         onError: (error) => {
             console.error('AI autocomplete error:', error)
         },
@@ -52,9 +56,11 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
     const triggerAiComplete = React.useCallback(() => {
         const ed = editorRef.current
         if (!ed) return
+        setCompletion('')
         prevCompletionLenRef.current = 0
 
         const currentContent = ed.getText()
+        ed.commands.focus('end')
         complete(currentContent, {
             body: {
                 context: currentContent,
@@ -63,7 +69,7 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
                 accountId: accountId ?? undefined,
             },
         })
-    }, [complete, subject, threadId, accountId])
+    }, [complete, setCompletion, subject, threadId, accountId])
 
     const customText = Text.extend({
         addKeyboardShortcuts() {
@@ -101,7 +107,7 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
         // Insert only the newly streamed portion
         const newText = completion.slice(prevCompletionLenRef.current)
         if (newText) {
-            editor.commands.insertContent(newText)
+            editor.commands.focus('end').insertContent(newText)
             prevCompletionLenRef.current = completion.length
         }
     }, [completion, editor])
