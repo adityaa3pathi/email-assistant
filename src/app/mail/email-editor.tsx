@@ -39,12 +39,18 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
     // ─── AI Autocomplete ─────────────────────────────────────────────────
     const { complete, completion, isLoading: isAiLoading, stop, setCompletion } = useCompletion({
         api: '/api/ai/autocomplete',
-        onResponse: () => {
+        onResponse: (res) => {
+            if (!res.ok) {
+                console.error('AI autocomplete HTTP error:', res.status, res.statusText)
+                alert(`AI Autocomplete Error (${res.status}): ${res.statusText || 'Failed to fetch AI response'}`)
+                return
+            }
             prevCompletionLenRef.current = 0
             editorRef.current?.commands.focus('end')
         },
         onError: (error) => {
             console.error('AI autocomplete error:', error)
+            alert(`AI Autocomplete Error: ${error.message}`)
         },
     })
 

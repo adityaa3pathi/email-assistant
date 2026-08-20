@@ -93,9 +93,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = streamText({
-    model: geminiFlash,
-    system: `You are an AI email assistant helping the user compose emails.
+  try {
+    const result = streamText({
+      model: geminiFlash,
+      system: `You are an AI email assistant helping the user compose emails.
 Your job is to complete or generate email content based on what the user has typed so far.
 
 Rules:
@@ -106,8 +107,15 @@ Rules:
 - Continue naturally from where the user left off
 ${threadSubject ? `- This is a reply to an email thread about: "${threadSubject}"` : ""}
 ${context ? `- The user has typed so far: "${context}"` : ""}${toneContext}`,
-    prompt: prompt || "Write a professional email reply.",
-  })
+      prompt: prompt || "Write a professional email reply.",
+    })
 
-  return result.toTextStreamResponse()
+    return result.toDataStreamResponse()
+  } catch (error) {
+    console.error("[autocomplete] Stream error:", error)
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
 }
