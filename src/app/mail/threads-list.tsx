@@ -1,11 +1,12 @@
 import DOMPurify from "dompurify"
 import React, { type ComponentProps } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { Sparkles } from "lucide-react"
+import { Sparkles, RefreshCw, AlertCircle, Inbox, MailCheck } from "lucide-react"
 
 import useThreads from "@/hooks/use-threads"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 // ─── AI Label Color Mapping ──────────────────────────────────────────────────
 const AI_LABEL_COLORS: Record<string, string> = {
@@ -19,7 +20,62 @@ const AI_LABEL_COLORS: Record<string, string> = {
 }
 
 const ThreadList = () => {
-  const { threads, threadId, setThreadId } = useThreads()
+  const { threads, threadId, setThreadId, account, syncCurrentAccount, isSyncing } = useThreads()
+
+  // 1. Syncing State (when account is actively fetching from Gmail)
+  if (isSyncing || account?.syncStatus === "syncing" || (account?.syncStatus === "pending" && (!threads || threads.length === 0))) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center h-[calc(100vh-140px)] gap-3 text-muted-foreground">
+        <RefreshCw className="size-8 animate-spin text-primary opacity-80" />
+        <div className="flex flex-col gap-1">
+          <p className="font-semibold text-foreground text-sm">Syncing with Gmail...</p>
+          <p className="text-xs text-muted-foreground max-w-[260px]">
+            Fetching recent emails for {account?.emailAddress || "your account"}. They will appear here in just a moment.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // 2. Failed Sync State
+  if (account?.syncStatus === "failed") {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 text-center h-[calc(100vh-140px)] gap-3">
+        <AlertCircle className="size-8 text-destructive" />
+        <p className="font-semibold text-sm text-destructive">Sync Error</p>
+        <p className="text-xs text-muted-foreground max-w-[280px]">
+          {account.syncError || "Could not sync emails from Gmail."}
+        </p>
+        <Button size="sm" variant="outline" onClick={() => syncCurrentAccount()} className="gap-2 mt-2">
+          <RefreshCw className="size-3.5" />
+          Retry Sync
+        </Button>
+      </div>
+    )
+  }
+
+  // 3. Empty State (synced but no threads)
+  if (threads && threads.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center h-[calc(100vh-140px)] gap-3 text-muted-foreground">
+        <Inbox className="size-10 stroke-1 opacity-50" />
+        <div className="flex flex-col gap-1">
+          <p className="font-medium text-foreground text-sm">No emails in this folder</p>
+          <p className="text-xs text-muted-foreground">Your inbox is all caught up.</p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => syncCurrentAccount()}
+          disabled={isSyncing}
+          className="gap-2 text-xs text-muted-foreground hover:text-foreground mt-1"
+        >
+          <RefreshCw className={cn("size-3.5", isSyncing && "animate-spin")} />
+          Check for new emails
+        </Button>
+      </div>
+    )
+  }
 
   const groupedThreads = threads?.reduce((acc, thread) => {
     const date = format(

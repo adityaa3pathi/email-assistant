@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: email-assistant-config
+  namespace: email-assistant
+data:
+  NEXT_PUBLIC_URL: "https://email-assistant.example.com"
+  FASTAPI_URL: "http://email-assistant-backend:8000"
+  NODE_ENV: "production"

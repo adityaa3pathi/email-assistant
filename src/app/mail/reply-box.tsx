@@ -51,8 +51,40 @@ const Component = ({replyDetails}: {replyDetails: RouterOutputs['account']['getR
   }, [threadId, replyDetails])
 
 
+  const utils = api.useUtils()
+  const sendEmail = api.account.sendEmail.useMutation({
+    onSuccess: () => {
+      alert("Email sent successfully!")
+      void utils.account.getThreads.invalidate()
+      void utils.account.getNumThreads.invalidate()
+      void utils.account.getAccounts.invalidate()
+    },
+    onError: (error) => {
+      console.error("Failed to send email:", error)
+      alert(`Failed to send email: ${error.message}`)
+    }
+  })
+
   const handleSend = async (value: string) => { 
-    console.log('Sending reply with body:', value)
+    if (!accountId) {
+      alert("No active account selected.")
+      return
+    }
+    if (!value || !value.trim()) {
+      alert("Please enter a message body.")
+      return
+    }
+    await sendEmail.mutateAsync({
+      accountId,
+      threadId: threadId ?? undefined,
+      body: value,
+      subject,
+      from: replyDetails.from,
+      to: toValues.map((to) => ({ name: to.label ?? undefined, address: to.value })),
+      cc: ccValues.map((cc) => ({ name: cc.label ?? undefined, address: cc.value })),
+      inReplyTo: replyDetails.id,
+      references: replyDetails.id,
+    })
   }
 
 return (
@@ -67,7 +99,7 @@ return (
     setCcValues={setccValues}
     to={replyDetails.to.map((to) => to.address)}
     handleSend={handleSend}
-    isSending={false}
+    isSending={sendEmail.isPending}
     threadId={threadId}
     accountId={accountId}
   />

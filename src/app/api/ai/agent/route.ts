@@ -1,9 +1,10 @@
-import { streamText, isStepCount } from "ai"
+import { streamText, tool, isStepCount, convertToModelMessages } from "ai"
 import { geminiFlash } from "@/lib/ai"
-import { db } from "@/server/db"
-import { searchSimilarEmails } from "@/lib/embeddings"
 import { auth } from "@clerk/nextjs/server"
+import { db } from "@/server/db"
 import { z } from "zod"
+import { hybridSearch } from "@/lib/embeddings"
+import { getCalendarEvents } from "@/lib/calendar"
 
 export async function POST(req: Request) {
   const { userId } = await auth()
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
 
   const { messages, accountId, threadId } = await req.json()
 
-  // Verify account access
+  // Verify account ownership
   const account = await db.account.findFirst({
     where: { id: accountId, userId },
     select: { id: true, emailAddress: true, name: true },
@@ -23,171 +24,244 @@ export async function POST(req: Request) {
     return new Response("Account not found", { status: 404 })
   }
 
+  // ─── Route to Python LangGraph Agent if FASTAPI_URL is configured ──────────
+  const fastApiUrl = process.env.FASTAPI_URL
+  if (fastApiUrl) {
+    try {
+      const pyResponse = await fetch(`${fastApiUrl}/agent/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages, accountId, threadId }),
+      })
+
+      if (pyResponse.ok && pyResponse.body) {
+        return new Response(pyResponse.body, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+          },
+        })
+      }
+    } catch (err) {
+      console.warn(
+        "[agent] Python LangGraph backend unavailable, falling back to Next.js agent:",
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
+
+  const modelMessages = await convertToModelMessages(messages)
+
   const result = streamText({
     model: geminiFlash,
     system: `You are an AI email assistant for ${account.name} (${account.emailAddress}).
-You help manage their inbox by searching emails, summarizing threads, drafting replies,
-and classifying emails.
 
-When using tools, explain what you're doing in a natural way.
-When drafting replies, match the user's writing style based on their past emails.
-Be concise and helpful. Always cite specific emails when referencing information.`,
+You have access to tools to search emails, check calendar, classify threads, and draft replies.
+Always use the searchEmails tool before answering questions about email content.
+When referencing emails, always cite them using [Email:ID] format with the actual emailId.
+Never make up or hallucinate email content — only reference emails returned by your tools.
+Be concise and helpful. If you need multiple steps, explain what you're doing.
 
-    messages,
-    stopWhen: isStepCount(5),
-
+Current date: ${new Date().toISOString().split('T')[0]}`,
+    messages: modelMessages,
     tools: {
-      searchEmails: {
-        description:
-          "Search the user's emails semantically. Use this when the user asks to find emails, asks about specific topics, or needs context for a reply.",
+      searchEmails: tool({
+        description: "Search the user's emails using semantic similarity. Use this to find emails about a topic, from a person, or matching a query.",
         inputSchema: z.object({
-          query: z.string().describe("The search query — use natural language"),
-          limit: z.number().optional().default(5).describe("Number of results to return"),
+          query: z.string().describe("The search query — describe what you're looking for"),
         }),
-        execute: async ({ query, limit }: { query: string; limit: number }) => {
-          const results = await searchSimilarEmails(account.id, query, limit)
+        execute: async ({ query }) => {
+          const results = await hybridSearch(account.id, query, undefined, 10)
           return results.map((r) => ({
+            emailId: r.emailId,
             subject: r.subject,
-            snippet: r.bodySnippet || r.content,
+            bodySnippet: r.bodySnippet || r.content,
             sentAt: r.sentAt,
-            similarity: Math.round(Number(r.similarity) * 100) + "%",
             threadId: r.threadId,
+            similarity: Math.round(Number(r.similarity) * 100) + "%",
           }))
         },
-      },
+      }),
 
-      getThreadDetails: {
-        description:
-          "Get full details of a specific thread including all emails. Use when the user asks about a specific thread or needs context for it.",
+      getCalendarEvents: tool({
+        description: "Look up the user's Google Calendar events. Use this to check availability, find meetings, or schedule context.",
         inputSchema: z.object({
-          threadId: z.string().describe("The thread ID to fetch."),
+          startDate: z.string().describe("Start date in ISO format (e.g., 2024-01-15)"),
+          endDate: z.string().describe("End date in ISO format (e.g., 2024-01-16)"),
         }),
-        execute: async ({ threadId: tid }: { threadId: string }) => {
+        execute: async ({ startDate, endDate }) => {
+          try {
+            const events = await getCalendarEvents(
+              account.id,
+              new Date(startDate),
+              new Date(endDate)
+            )
+            return events.length > 0
+              ? events
+              : [{ message: "No events found in the specified time range" }]
+          } catch (error) {
+            return [{ error: "Could not access calendar. The user may need to re-authorize with calendar permissions." }]
+          }
+        },
+      }),
+
+      getThreadDetails: tool({
+        description: "Get the full details of an email thread including all messages. Use this to understand the full context of a conversation.",
+        inputSchema: z.object({
+          threadId: z.string().describe("The thread ID to fetch details for"),
+        }),
+        execute: async ({ threadId: tid }) => {
           const thread = await db.thread.findUnique({
-            where: { id: tid || threadId },
+            where: { id: tid },
             include: {
               emails: {
-                orderBy: { sentAt: "asc" as const },
-                take: 10,
+                orderBy: { sentAt: "asc" },
                 select: {
+                  id: true,
                   subject: true,
                   bodySnippet: true,
                   sentAt: true,
-                  from: { select: { name: true, address: true } },
-                  to: { select: { name: true, address: true } },
+                  from: true,
+                  to: true,
+                  sysLabels: true,
                 },
               },
             },
           })
-
           if (!thread) return { error: "Thread not found" }
-
+          
+          const subject = thread.emails[0]?.subject || "No subject"
+          
           return {
-            subject: thread.subject,
+            subject: subject,
             summary: thread.summary,
             aiLabels: thread.aiLabels,
-            emailCount: thread.emails.length,
             emails: thread.emails.map((e) => ({
-              from: e.from.name || e.from.address,
-              to: e.to.map((t) => t.name || t.address).join(", "),
+              emailId: e.id,
+              from: `${e.from.name || ''} <${e.from.address}>`.trim(),
+              to: e.to.map((t) => `${t.name || ''} <${t.address}>`.trim()).join(", "),
               subject: e.subject,
-              snippet: e.bodySnippet,
+              bodySnippet: e.bodySnippet,
               sentAt: e.sentAt,
             })),
           }
         },
-      },
+      }),
 
-      draftReply: {
-        description:
-          "Draft an email reply based on context. Returns the draft text for the user to review.",
-        inputSchema: z.object({
-          context: z.string().describe("What the reply should be about"),
-          recipientName: z.string().optional().describe("Name of the person being replied to"),
-        }),
-        execute: async ({ context, recipientName }: { context: string; recipientName?: string }) => {
-          const userEmails = await db.email.findMany({
-            where: {
-              thread: { accountId: account.id },
-              from: { address: account.emailAddress },
-            },
-            orderBy: { sentAt: "desc" as const },
-            take: 3,
-            select: { bodySnippet: true },
-          })
-
-          const styleHint =
-            userEmails.length > 0
-              ? `\nUser's writing style samples:\n${userEmails.map((e) => e.bodySnippet).join("\n---\n")}`
-              : ""
-
-          return {
-            type: "draft" as const,
-            instruction: context,
-            recipientName,
-            styleHint,
-            message: "I've prepared the context for drafting. I'll now write the reply.",
-          }
-        },
-      },
-
-      classifyThread: {
-        description:
-          "Classify a thread with AI labels. Categories: urgent, newsletter, client-request, internal, meeting, notification, personal.",
+      classifyThread: tool({
+        description: "Classify an email thread into categories like urgent, newsletter, client-request, internal, meeting, notification, personal.",
         inputSchema: z.object({
           threadId: z.string().describe("The thread ID to classify"),
-          labels: z.array(z.string()).describe("Array of labels to apply"),
         }),
-        execute: async ({ threadId: tid, labels }: { threadId: string; labels: string[] }) => {
-          const validLabels = [
-            "urgent", "newsletter", "client-request", "internal",
-            "meeting", "notification", "personal",
-          ]
-          const filtered = labels.filter((l: string) => validLabels.includes(l))
-
-          await db.thread.update({
+        execute: async ({ threadId: tid }) => {
+          const thread = await db.thread.findUnique({
             where: { id: tid },
-            data: { aiLabels: filtered },
+            select: { aiLabels: true, summary: true },
           })
-
-          return { success: true, threadId: tid, appliedLabels: filtered }
+          if (!thread) return { error: "Thread not found" }
+          if (thread.aiLabels.length > 0) {
+            return {
+              threadId: tid,
+              labels: thread.aiLabels,
+              summary: thread.summary,
+              message: "Thread is already classified",
+            }
+          }
+          return {
+            threadId: tid,
+            labels: [],
+            message: "Thread not yet classified. Classification runs in the background via the ingestion pipeline.",
+          }
         },
-      },
+      }),
 
-      summarizeThread: {
-        description: "Generate a one-line summary for a thread and save it.",
+      draftReply: tool({
+        description: "Draft an email reply for a thread. Returns a suggested reply body that the user can edit before sending.",
         inputSchema: z.object({
-          threadId: z.string().describe("The thread ID to summarize"),
+          threadId: z.string().describe("The thread ID to reply to"),
+          instructions: z.string().describe("Instructions for the reply — what to say, tone, key points"),
+          tone: z.enum(["formal", "casual", "friendly", "professional"]).optional().describe("Desired tone"),
         }),
-        execute: async ({ threadId: tid }: { threadId: string }) => {
+        execute: async ({ threadId: tid, instructions, tone }) => {
+          // Get thread context
           const thread = await db.thread.findUnique({
             where: { id: tid },
             include: {
               emails: {
-                orderBy: { sentAt: "desc" as const },
+                orderBy: { sentAt: "desc" },
                 take: 3,
                 select: {
                   subject: true,
                   bodySnippet: true,
-                  from: { select: { name: true, address: true } },
+                  from: true,
+                  to: true,
                 },
               },
             },
           })
 
-          if (!thread) return { error: "Thread not found" }
+          if (!thread || thread.emails.length === 0) {
+            return { error: "Thread not found or has no emails" }
+          }
+          
+          const subject = thread.emails[0]?.subject || "No subject"
+
+          // Get tone context from past emails (same pattern as autocomplete)
+          const contactAddresses = new Set<string>()
+          for (const email of thread.emails) {
+            if (email.from.address !== account.emailAddress) {
+              contactAddresses.add(email.from.address)
+            }
+          }
+
+          let toneContext = ""
+          if (contactAddresses.size > 0) {
+            const pastEmails = await db.email.findMany({
+              where: {
+                thread: { accountId: account.id },
+                from: { address: account.emailAddress },
+                to: { some: { address: { in: Array.from(contactAddresses) } } },
+              },
+              orderBy: { sentAt: "desc" },
+              take: 3,
+              select: { bodySnippet: true, subject: true },
+            })
+            if (pastEmails.length > 0) {
+              toneContext = `\nPast emails to this contact (match their style):\n${pastEmails.map((e, i) => `${i + 1}. Subject: ${e.subject}\n${e.bodySnippet || ""}`).join("\n")}`
+            }
+          }
+
+          // Generate the draft using Gemini
+          const { generateText } = await import("ai")
+          const { text: draft } = await generateText({
+            model: geminiFlash,
+            prompt: `Draft a reply email for the following thread.
+
+Thread subject: ${subject}
+Recent messages:
+${thread.emails.map((e, i) => `--- Email ${i + 1} ---\nFrom: ${e.from.name || ''} <${e.from.address}>\nSubject: ${e.subject}\n${e.bodySnippet || ""}`).join("\n")}
+
+User instructions: ${instructions}
+${tone ? `Tone: ${tone}` : ""}
+${toneContext}
+
+Rules:
+- Write ONLY the email body (no subject line, no headers)
+- Be ${tone || "professional"} and concise
+- Match the user's historical writing style if available`,
+          })
 
           return {
-            subject: thread.subject,
-            emailCount: thread.emails.length,
-            context: thread.emails
-              .map((e) => `From: ${e.from.name || e.from.address}\n${e.bodySnippet || ""}`)
-              .join("\n---\n"),
-            instruction: "Generate a one-sentence summary (max 15 words) and I will save it.",
+            draft,
+            threadId: tid,
+            subject: `Re: ${subject}`,
+            to: thread.emails[0]!.from.address,
           }
         },
-      },
+      }),
     },
+    stopWhen: isStepCount(5), // Cap at 5 steps to bound cost and latency
   })
 
   return result.toTextStreamResponse()

@@ -39,15 +39,7 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
     // ─── AI Autocomplete ─────────────────────────────────────────────────
     const { complete, completion, isLoading: isAiLoading, stop, setCompletion } = useCompletion({
         api: '/api/ai/autocomplete',
-        onResponse: (res) => {
-            if (!res.ok) {
-                console.error('AI autocomplete HTTP error:', res.status, res.statusText)
-                alert(`AI Autocomplete Error (${res.status}): ${res.statusText || 'Failed to fetch AI response'}`)
-                return
-            }
-            prevCompletionLenRef.current = 0
-            editorRef.current?.commands.focus('end')
-        },
+        streamProtocol: 'text',
         onError: (error) => {
             console.error('AI autocomplete error:', error)
             alert(`AI Autocomplete Error: ${error.message}`)
@@ -84,6 +76,14 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
                     triggerAiComplete()
                     return true
                 },
+                'Mod-j': () => {
+                    triggerAiComplete()
+                    return true
+                },
+                'Control-j': () => {
+                    triggerAiComplete()
+                    return true
+                },
                 'Escape': () => {
                     if (isAiLoading) {
                         stop()
@@ -113,7 +113,7 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
         // Insert only the newly streamed portion
         const newText = completion.slice(prevCompletionLenRef.current)
         if (newText) {
-            editor.commands.focus('end').insertContent(newText)
+            editor.commands.insertContent(newText)
             prevCompletionLenRef.current = completion.length
         }
     }, [completion, editor])
@@ -190,12 +190,13 @@ const EmailEditor = ({ subject, setSubject, toValues, setToValues, ccValues, set
                     </Button>
                     <Button
                         onClick={async () => {
+                            const bodyContent = editor?.getHTML() || value
+                            await handleSend(bodyContent)
                             editor?.commands?.clearContent()
-                            await handleSend(value)
                         }}
                         disabled={isSending}
                     >
-                        Send
+                        {isSending ? "Sending..." : "Send"}
                     </Button>
                 </div>
             </div>

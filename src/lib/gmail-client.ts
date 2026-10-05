@@ -31,6 +31,7 @@ const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
+  "https://www.googleapis.com/auth/calendar.readonly",
 ] as const;
 
 /** Buffer (in ms) before token expiry at which we proactively refresh. */
@@ -279,3 +280,70 @@ export async function getAuthedGmailClient(accountId: string) {
 
   return google.gmail({ version: "v1", auth: oauth2Client });
 }
+
+// ─── Sending Emails ──────────────────────────────────────────────────────────
+
+export interface SendEmailOptions {
+  accountId: string;
+  from?: { name?: string; address: string };
+  to: { name?: string; address: string }[];
+  cc?: { name?: string; address: string }[];
+  bcc?: { name?: string; address: string }[];
+  subject: string;
+  body: string;
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string;
+}
+
+export async function sendEmail({
+  accountId,
+  from,
+  to,
+  cc,
+  bcc,
+  subject,
+  body,
+  inReplyTo,
+  references,
+  threadId,
+}: SendEmailOptions) {
+  const gmail = await getAuthedGmailClient(accountId);
+
+  const formatAddr = (addr: { name?: string; address: string }) =>
+    addr.name
+      ? `"${addr.name.replace(/"/g, '\\"')}" <${addr.address}>`
+      : `<${addr.address}>`;
+
+  const lines: string[] = [];
+  if (from) lines.push(`From: ${formatAddr(from)}`);
+  lines.push(`To: ${to.map(formatAddr).join(", ")}`);
+  if (cc && cc.length > 0) lines.push(`Cc: ${cc.map(formatAddr).join(", ")}`);
+  if (bcc && bcc.length > 0) lines.push(`Bcc: ${bcc.map(formatAddr).join(", ")}`);
+  lines.push(`Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`);
+  lines.push("MIME-Version: 1.0");
+  lines.push('Content-Type: text/html; charset="UTF-8"');
+  lines.push("Content-Transfer-Encoding: base64");
+  if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`);
+  if (references) lines.push(`References: ${references}`);
+  lines.push("");
+  lines.push(Buffer.from(body).toString("base64"));
+  const mimeMessage = lines.join("\r\n");
+
+  const raw = Buffer.from(mimeMessage)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  const sent = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: {
+      raw,
+      threadId: threadId || undefined,
+    },
+  });
+
+  return sent.data;
+}
+

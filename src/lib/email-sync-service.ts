@@ -47,22 +47,26 @@ export async function runInitialSync(accountId: string, userId: string) {
       await syncEmailsToDatabase(emails, accountId);
     }
 
-    // 5. Store historyId and transition to historical sync phase
+    // 5. Store historyId and transition to synced phase
     await db.account.update({
       where: { id: accountId },
       data: {
         nextDeltaToken: historyId,
-        syncStatus: "syncing_historical",
+        syncStatus: "synced",
         syncError: null,
         lastSyncedAt: new Date(),
       },
     });
 
-    // 6. Queue historical backfill in the background
-    await inngest.send({
-      name: "email/sync.historical",
-      data: { accountId, userId },
-    });
+    // 6. Queue historical backfill in the background if Inngest is running
+    try {
+      await inngest.send({
+        name: "email/sync.historical",
+        data: { accountId, userId },
+      });
+    } catch {
+      // Inngest offline — initial sync is still completely successful
+    }
 
     console.log(
       `[email-sync] Initial sync completed for account ${accountId}: ${emails.length} emails synced. Historical sync queued.`,

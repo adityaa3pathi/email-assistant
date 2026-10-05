@@ -10,8 +10,8 @@ async function syncEmailsToDatabase(emails: EmailMessage[], accountId: string) {
       try {
         // Promise.all(emails.map((emails, index) => upsertEmail(emails, accountId, index)))
 
-        for(const email of emails) {
-            await upsertEmail(email, accountId, 0)
+        for (let i = 0; i < emails.length; i++) {
+            await upsertEmail(emails[i]!, accountId, i);
         }
       }
  catch (error) {
@@ -25,7 +25,9 @@ async function syncEmailsToDatabase(emails: EmailMessage[], accountId: string) {
 
 
 async function upsertEmail(email: EmailMessage, accountId: string, index: number) { //Turn raw email address strings into canonical database identities, once, and reuse them everywhere.
-    console.log(`Upserting email ${index + 1}`, JSON.stringify(email, null, 2));
+    if ((index + 1) % 10 === 0 || index === 0) {
+        console.log(`[sync-to-db] Upserting email ${index + 1}: "${email.subject.slice(0, 40)}" from ${email.from.address}`);
+    }
 
 
         // determine email label type
@@ -171,21 +173,16 @@ async function upsertEmail(email: EmailMessage, accountId: string, index: number
             orderBy: { receivedAt: 'asc' }
         });
 
-        let threadFolderType = 'sent';
-        for (const threadEmail of threadEmails) {
-            if (threadEmail.emailLabel === 'inbox') {
-                threadFolderType = 'inbox';
-                break; // If any email is in inbox, the whole thread is in inbox
-            } else if (threadEmail.emailLabel === 'draft') {
-                threadFolderType = 'draft'; // Set to draft, but continue checking for inbox
-            }
-        }
+        const hasInbox = threadEmails.some(e => e.emailLabel === 'inbox' || e.sysLabels.includes('inbox'));
+        const hasSent = threadEmails.some(e => e.emailLabel === 'sent' || e.sysLabels.includes('sent'));
+        const hasDraft = threadEmails.some(e => e.emailLabel === 'draft' || e.sysLabels.includes('draft'));
+
         await db.thread.update({
             where: { id: thread.id },
             data: {
-                draftStatus: threadFolderType === 'draft',
-                inboxStatus: threadFolderType === 'inbox',
-                sentStatus: threadFolderType === 'sent',
+                draftStatus: hasDraft,
+                inboxStatus: hasInbox,
+                sentStatus: hasSent,
             }
         });
 

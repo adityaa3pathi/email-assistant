@@ -6,6 +6,7 @@ import {
   summarizeThreadsJob,
   classifyThreadsJob,
   generateEmbeddingsJob,
+  incrementalSyncJob,
 } from "@/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -16,5 +17,6 @@ export const { GET, POST, PUT } = serve({
     summarizeThreadsJob,
     classifyThreadsJob,
     generateEmbeddingsJob,
+    incrementalSyncJob,
   ],
 });

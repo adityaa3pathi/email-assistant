@@ -2,6 +2,7 @@ import { streamText } from "ai"
 import { geminiFlash } from "@/lib/ai"
 import { db } from "@/server/db"
 import { auth } from "@clerk/nextjs/server"
+import { searchSimilarEmails } from "@/lib/embeddings"
 
 export async function POST(req: Request) {
   const { userId } = await auth()
@@ -93,6 +94,29 @@ export async function POST(req: Request) {
     }
   }
 
+  // ─── RAG Context: Fetch semantically similar emails ──────────────────
+  let ragContext = ""
+
+  if (accountId) {
+    try {
+      const searchQuery = `${threadSubject || ""} ${prompt || ""}`.trim()
+      if (searchQuery.length >= 3) {
+        const similarEmails = await searchSimilarEmails(accountId, searchQuery, 3)
+        if (similarEmails.length > 0) {
+          ragContext = `\n\nHere are related emails from the user's inbox for additional context:\n${similarEmails
+            .map(
+              (e, i) =>
+                `--- Related Email ${i + 1} (${Math.round(Number(e.similarity) * 100)}% relevant) ---\nSubject: ${e.subject}\n${e.bodySnippet || e.content}`
+            )
+            .join("\n")}`
+        }
+      }
+    } catch (error) {
+      console.error("[autocomplete] Failed to fetch RAG context:", error)
+      // Continue without RAG context — degraded but functional
+    }
+  }
+
   try {
     const result = streamText({
       model: geminiFlash,
@@ -106,11 +130,19 @@ Rules:
 - Do NOT wrap your response in quotes or markdown
 - Continue naturally from where the user left off
 ${threadSubject ? `- This is a reply to an email thread about: "${threadSubject}"` : ""}
-${context ? `- The user has typed so far: "${context}"` : ""}${toneContext}`,
-      prompt: prompt || "Write a professional email reply.",
+${context ? `- The user has typed so far: "${context}"` : ""}${toneContext}${ragContext}`,
+      prompt: prompt
+        ? `Continue writing this email naturally from where the user left off. Only output the continuation text, do not repeat what was already written:\n\n${prompt}`
+        : "Write a professional email reply.",
     })
 
-    return result.toDataStreamResponse()
+    return result.toTextStreamResponse({
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+      },
+    })
   } catch (error) {
     console.error("[autocomplete] Stream error:", error)
     return new Response(JSON.stringify({ error: (error as Error).message }), {

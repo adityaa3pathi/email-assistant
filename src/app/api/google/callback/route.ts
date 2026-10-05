@@ -1,5 +1,6 @@
 import { exchangeCodeForTokens, getGoogleUserProfile } from "@/lib/gmail-client";
 import { inngest } from "@/inngest/client";
+import { runInitialSync } from "@/lib/email-sync-service";
 import { db } from "@/server/db";
 import { auth } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
@@ -105,25 +106,34 @@ export const GET = async (req: NextRequest) => {
     );
   }
 
-  // ── Trigger initial sync via Inngest (background, memory-safe) ────────
-  // NOTE: We intentionally do NOT run sync inline here. On low-memory
-  // systems, fetching + MIME-parsing hundreds of emails in the Next.js
-  // server process causes OOM / swap thrashing. Inngest handles this
-  // in durable background steps with controlled batching.
+  // ── Trigger initial sync (fetches recent emails immediately) ──────────
   try {
-    await inngest.send({
-      name: "email/sync.initial",
-      data: { accountId, userId },
-    });
-    console.log(
-      `[google/callback] Queued Inngest initial sync for account ${accountId}`,
-    );
+    console.log(`[google/callback] Starting initial sync for account ${accountId}...`);
+    await runInitialSync(accountId, userId);
+    console.log(`[google/callback] Initial sync completed for account ${accountId}`);
   } catch (err) {
-    console.warn(
-      "[google/callback] Warning: Could not trigger Inngest initial sync (is Inngest dev server running?):",
+    console.error(
+      `[google/callback] Warning: Direct initial sync encountered an error:`,
       err,
     );
+    // Also try queuing via Inngest if available
+    try {
+      await inngest.send({
+        name: "email/sync.initial",
+        data: { accountId, userId },
+      });
+    } catch {
+      // Inngest offline
+    }
   }
 
-  return NextResponse.redirect(new URL("/mail", req.url));
+  // ── Redirect to /mail with the active accountId parameter ───────────────
+  const redirectUrl = new URL(`/mail?accountId=${accountId}`, req.url);
+  const response = NextResponse.redirect(redirectUrl);
+  response.cookies.set("accountId", accountId, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+  return response;
 };

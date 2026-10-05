@@ -48,3 +48,6 @@ yarn-error.log*
 
 # cloudflared binary
 cloudflared-linux-amd64.deb
+
+# Generated Prisma engine binaries (platform-specific, regenerated on install)
+generated/

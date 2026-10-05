@@ -16,6 +16,7 @@ import ThreadList from "./threads-list"
 import ThreadDisplay from "./thread-display"
 import SearchBar from "./search-bar"
 import AIChatPanel from "./ai-chat-panel"
+import ComposeDialog from "./compose-dialog"
 
 import { useLocalStorage } from "usehooks-ts"
 
@@ -75,7 +76,7 @@ const Mail = ({
             <Sidebar isCollapsed={isCollapsed}/>
             <div className="flex-1"></div>
             {/* Ask AI */}
-            <AIChatPanel />
+            <AIChatPanel isCollapsed={isCollapsed} />
           </div>
         </ResizablePanel>
 
@@ -122,6 +123,7 @@ const Mail = ({
           <ThreadDisplay/>
         </ResizablePanel>
       </ResizablePanelGroup>
+      <ComposeDialog />
     </TooltipProvider>
   )
 }

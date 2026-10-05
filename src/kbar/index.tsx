@@ -4,17 +4,31 @@
 import {KBarAnimator, KBarPortal, KBarPositioner, KBarProvider, KBarSearch, type Action,  } from 'kbar'
 import { Children } from 'react'
 import { RenderResults } from './render-results'
-import { useAtom } from 'jotai'
+import { useAtom, useSetAtom } from 'jotai'
 import { useLocalStorage } from 'usehooks-ts'
 import useThemeSwitching from './use-theme-switching'
 import useAccountSwitching from './use-account-switching'
+import { isComposeOpenAtom } from '@/app/mail/compose-dialog'
+
 export default function KBar({children}: {children: React.ReactNode}) {
 
 
     const [tab, setTab] = useLocalStorage<'inbox' | 'draft' | 'sent' >('email-assistant-tab', 'inbox')
     const [done, setDone] = useLocalStorage('email-assistant-done', false)
-    const actions: Action[] = [
+    const setIsComposeOpen = useSetAtom(isComposeOpenAtom)
 
+    const actions: Action[] = [
+        {
+            id: "composeAction",
+            name: "Compose Email",
+            shortcut: ['c'],
+            keywords: "compose, new, email, write, send",
+            section: "Actions",
+            subtitle: "Compose a new email",
+            perform: () => {
+                setIsComposeOpen(true)
+            }
+        },
         {
             id: "inboxAction",
             name: "Inbox",

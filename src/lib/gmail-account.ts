@@ -133,6 +133,7 @@ export class GmailAccount {
    */
   async fetchEmails(
     daysWithin?: number,
+    maxMessages: number = 50,
   ): Promise<{ emails: EmailMessage[]; historyId: string }> {
     const gmail = await this.getClient();
 
@@ -140,11 +141,19 @@ export class GmailAccount {
     const q = daysWithin ? `newer_than:${daysWithin}d` : undefined;
 
     // Step 1: Collect all message IDs by paginating through list results
-    const messageIds = await this.listAllMessageIds(gmail, q);
+    let messageIds = await this.listAllMessageIds(gmail, q);
     console.log(
       `[GmailAccount] Listed ${messageIds.length} message IDs for account ${this.accountId}` +
         (q ? ` (query: ${q})` : " (all history)"),
     );
+
+    // If maxMessages is set, take the most recent slice for fast initial sync
+    if (maxMessages && messageIds.length > maxMessages) {
+      console.log(
+        `[GmailAccount] Slicing ${messageIds.length} messages to latest ${maxMessages} for rapid initial load`,
+      );
+      messageIds = messageIds.slice(0, maxMessages);
+    }
 
     // Step 2: Fetch and parse each message
     const emails = await this.fetchAndParseMessages(gmail, messageIds);
@@ -260,58 +269,71 @@ export class GmailAccount {
   }
 
   /**
-   * Fetches raw MIME for each message ID, parses it, and maps to `EmailMessage`.
-   * Applies a 50ms delay between requests to respect Gmail API rate limits.
+   * Fetches raw MIME for message IDs concurrently in batches of `concurrency`,
+   * parses each with mailparser, and maps to `EmailMessage`.
    */
   private async fetchAndParseMessages(
     gmail: gmail_v1.Gmail,
     messageIds: string[],
+    concurrency: number = 5,
   ): Promise<EmailMessage[]> {
     const emails: EmailMessage[] = [];
+    const chunks: string[][] = [];
 
-    for (let i = 0; i < messageIds.length; i++) {
-      const id = messageIds[i]!;
+    for (let i = 0; i < messageIds.length; i += concurrency) {
+      chunks.push(messageIds.slice(i, i + concurrency));
+    }
 
-      try {
-        // Rate limiting: 50ms delay between requests
-        if (i > 0) {
-          await this.delay(RATE_LIMIT_DELAY_MS);
-        }
+    let processedCount = 0;
+    for (const chunk of chunks) {
+      const results = await Promise.all(
+        chunk.map(async (id) => {
+          try {
+            const response = await gmail.users.messages.get({
+              userId: "me",
+              id,
+              format: "raw",
+            });
 
-        const response = await gmail.users.messages.get({
-          userId: "me",
-          id,
-          format: "raw",
-        });
+            const raw = response.data.raw;
+            if (!raw) {
+              console.warn(
+                `[GmailAccount] Message ${id} has no raw data, skipping`,
+              );
+              return null;
+            }
 
-        const raw = response.data.raw;
-        if (!raw) {
-          console.warn(
-            `[GmailAccount] Message ${id} has no raw data, skipping`,
-          );
-          continue;
-        }
+            // Decode the base64url-encoded MIME
+            const mimeBuffer = Buffer.from(raw, "base64url");
 
-        // Decode the base64url-encoded MIME
-        const mimeBuffer = Buffer.from(raw, "base64url");
+            // Parse MIME with mailparser
+            const parsed = await simpleParser(mimeBuffer);
 
-        // Parse MIME with mailparser
-        const parsed = await simpleParser(mimeBuffer);
+            // Map to our EmailMessage interface
+            return this.mapToEmailMessage(parsed, response.data);
+          } catch (err) {
+            console.error(
+              `[GmailAccount] Failed to fetch/parse message ${id}:`,
+              err instanceof Error ? err.message : err,
+            );
+            return null;
+          }
+        }),
+      );
 
-        // Map to our EmailMessage interface
-        const email = this.mapToEmailMessage(
-          parsed,
-          response.data,
-        );
+      for (const email of results) {
+        if (email) emails.push(email);
+      }
 
-        emails.push(email);
-      } catch (err) {
-        // Log and skip individual message failures — don't abort the whole sync
-        console.error(
-          `[GmailAccount] Failed to fetch/parse message ${id} (${i + 1}/${messageIds.length}):`,
-          err instanceof Error ? err.message : err,
+      processedCount += chunk.length;
+      if (processedCount % 15 === 0 || processedCount === messageIds.length) {
+        console.log(
+          `[GmailAccount] Progress: fetched & parsed ${emails.length}/${messageIds.length} messages`,
         );
       }
+
+      // Small throttle between batches to stay comfortably within rate limits
+      await this.delay(RATE_LIMIT_DELAY_MS);
     }
 
     return emails;
@@ -323,7 +345,7 @@ export class GmailAccount {
    * This is the critical bridge between the Gmail API and `sync-to-db.ts`.
    * Every field is mapped to match what the old Aurinko API produced.
    */
-  private mapToEmailMessage(
+  public mapToEmailMessage(
     parsed: Awaited<ReturnType<typeof simpleParser>>,
     gmailData: gmail_v1.Schema$Message,
   ): EmailMessage {

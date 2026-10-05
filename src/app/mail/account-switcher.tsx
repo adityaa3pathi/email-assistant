@@ -2,7 +2,7 @@ import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue  } from "
 import { getGoogleAuthUrl } from "@/lib/actions"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, RefreshCw } from "lucide-react"
 import React from "react"
 import  { useLocalStorage } from "usehooks-ts"
 
@@ -25,9 +25,16 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
         }
     })
 
+    const syncAccount = api.account.syncAccount.useMutation({
+        onSuccess: () => {
+            utils.account.getAccounts.invalidate()
+            utils.account.getThreads.invalidate()
+        }
+    })
 
     if(!data) return null
-    const currentAccountId = accountId || data[0]?.id || ""
+    const preferredAccount = data.find(a => (a._count?.threads ?? 0) > 0 || a.syncStatus === 'synced') || data[0]
+    const currentAccountId = (data.some(a => a.id === accountId) ? accountId : preferredAccount?.id) || ""
 
     return (
         <Select value={currentAccountId} onValueChange={setAccountId}>
@@ -51,24 +58,47 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
             </SelectTrigger>
             <SelectContent >
                 {data.map((account) => {
+                    const isSyncing = syncAccount.isPending && syncAccount.variables?.accountId === account.id || account.syncStatus === 'syncing'
                     return (
                         <div key={account.id} className="relative flex w-full items-center">
-                            <SelectItem value={account.id} className="w-full pr-12">
-                                {account.emailAddress}
+                            <SelectItem value={account.id} className="w-full pr-16">
+                                <span className="truncate">{account.emailAddress}</span>
+                                {account.syncStatus === 'syncing' ? (
+                                    <span className="text-[10px] text-blue-500 font-medium ml-1.5">(syncing)</span>
+                                ) : account.syncStatus === 'failed' ? (
+                                    <span className="text-[10px] text-destructive font-medium ml-1.5">(error)</span>
+                                ) : (account._count?.threads ?? 0) > 0 ? (
+                                    <span className="text-[10px] text-muted-foreground font-normal ml-1.5">({account._count?.threads})</span>
+                                ) : null}
                             </SelectItem>
-                            <div 
-                                className="absolute right-2 p-1 rounded-sm hover:bg-red-100 text-red-500 cursor-pointer z-50"
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    if(confirm("Are you sure you want to delete this account?")) {
-                                        if (accountId === account.id) {
-                                            setAccountId('')
+                            <div className="absolute right-2 flex items-center gap-1 z-50">
+                                <button
+                                    type="button"
+                                    title="Sync emails"
+                                    className="p-1 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        e.preventDefault()
+                                        syncAccount.mutate({ accountId: account.id })
+                                    }}
+                                >
+                                    <RefreshCw className={cn("size-3.5", isSyncing && "animate-spin text-primary")} />
+                                </button>
+                                <div 
+                                    className="p-1 rounded-sm hover:bg-red-100 text-red-500 cursor-pointer"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        e.preventDefault()
+                                        if(confirm(`Are you sure you want to delete ${account.emailAddress}?`)) {
+                                            if (accountId === account.id) {
+                                                setAccountId('')
+                                            }
+                                            deleteAccount.mutate({ accountId: account.id })
                                         }
-                                        deleteAccount.mutate({ accountId: account.id })
-                                    }
-                                }}
-                            >
-                                <Trash2 className="size-4" />
+                                    }}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </div>
                             </div>
                         </div>
                     )

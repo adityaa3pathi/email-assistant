@@ -513,7 +513,7 @@ Return format: ["category1", "category2"]`,
 // ─── AI Job: Embedding Generation ───────────────────────────────────────────
 
 /**
- * Generates vector embeddings for emails using Google text-embedding-004.
+ * Generates vector embeddings for emails using Google gemini-embedding-001.
  * Embeddings are stored in pgvector for semantic search.
  * Processes emails with rate limiting to stay within free tier limits.
  */
@@ -588,4 +588,108 @@ export const generateEmbeddingsJob = inngest.createFunction(
   }
 );
 
+// ─── Incremental Sync (Delta Updates) ───────────────────────────────────────
 
+/**
+ * Incremental sync job — fetches only emails that changed since the last sync.
+ *
+ * Uses Gmail's History API via `fetchIncrementalUpdates()` with the stored
+ * `nextDeltaToken` (historyId). This is much faster than a full sync and
+ * should be triggered periodically or via Gmail push notifications.
+ */
+export const incrementalSyncJob = inngest.createFunction(
+  {
+    id: "sync-incremental",
+    triggers: [{ event: "email/sync.incremental" }],
+    concurrency: [{ key: "event.data.accountId", limit: 1 }],
+  },
+  async ({ event, step }) => {
+    const { accountId } = event.data as { accountId: string };
+
+    // Step 1: Get the account and its stored delta token
+    const account = await step.run("fetch-account", async () => {
+      return await db.account.findUnique({
+        where: { id: accountId },
+        select: { id: true, nextDeltaToken: true, syncStatus: true },
+      });
+    });
+
+    if (!account || !account.nextDeltaToken) {
+      return { status: "skipped", reason: "no_delta_token" };
+    }
+
+    // Step 2: Fetch incremental updates from Gmail
+    const updates = await step.run("fetch-incremental", async () => {
+      const gmailAccount = new GmailAccount(accountId);
+      return await gmailAccount.fetchIncrementalUpdates(account.nextDeltaToken!);
+    });
+
+    // Step 3: Save updated emails to DB (in batches)
+    if (updates.emails.length > 0) {
+      const totalBatches = Math.ceil(updates.emails.length / DB_BATCH_SIZE);
+      for (let i = 0; i < totalBatches; i++) {
+        const batch = updates.emails.slice(
+          i * DB_BATCH_SIZE,
+          (i + 1) * DB_BATCH_SIZE
+        );
+        await step.run(`save-batch-${i + 1}`, async () => {
+          await syncEmailsToDatabase(batch, accountId);
+        });
+      }
+    }
+
+    // Step 4: Update the delta token
+    await step.run("update-delta-token", async () => {
+      await db.account.update({
+        where: { id: accountId },
+        data: {
+          nextDeltaToken: updates.newHistoryId,
+          lastSyncedAt: new Date(),
+        },
+      });
+    });
+
+    // Step 5: Trigger AI processing for new emails
+    if (updates.emails.length > 0) {
+      const threadIds = await step.run("get-thread-ids", async () => {
+        // Get threads that were affected by the sync
+        const threads = await db.thread.findMany({
+          where: { accountId, summary: null },
+          select: { id: true },
+        });
+        return threads.map((t) => t.id);
+      });
+
+      const emailIds = await step.run("get-email-ids", async () => {
+        const emails = await db.email.findMany({
+          where: {
+            thread: { accountId },
+            embedding: null, // Only unembedded emails
+          },
+          select: { id: true },
+        });
+        return emails.map((e) => e.id);
+      });
+
+      if (threadIds.length > 0 || emailIds.length > 0) {
+        await step.sendEvent("trigger-ai-processing", [
+          ...(threadIds.length > 0
+            ? [
+                { name: "email/ai.summarize" as const, data: { accountId, threadIds } },
+                { name: "email/ai.classify" as const, data: { accountId, threadIds } },
+              ]
+            : []),
+          ...(emailIds.length > 0
+            ? [{ name: "email/ai.embed" as const, data: { accountId, emailIds } }]
+            : []),
+        ]);
+      }
+    }
+
+    return {
+      status: "completed",
+      emailsSynced: updates.emails.length,
+      newHistoryId: updates.newHistoryId,
+    };
+  }
+);

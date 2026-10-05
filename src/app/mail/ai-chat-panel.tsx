@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import useThreads from "@/hooks/use-threads"
 
-const AIChatPanel = () => {
+type Props = {
+  isCollapsed?: boolean
+}
+
+const AIChatPanel = ({ isCollapsed }: Props) => {
   const { accountId, threadId } = useThreads()
   const [isOpen, setIsOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("")
@@ -41,6 +45,19 @@ const AIChatPanel = () => {
   }
 
   if (!isOpen) {
+    if (isCollapsed) {
+      return (
+        <button
+          type="button"
+          title="Ask AI"
+          onClick={() => setIsOpen(true)}
+          className="flex items-center justify-center h-9 w-9 mx-auto mb-2 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 border border-purple-500/20 transition-all"
+        >
+          <Sparkles className="w-4 h-4 text-purple-500" />
+        </button>
+      )
+    }
+
     return (
       <button
         onClick={() => setIsOpen(true)}
