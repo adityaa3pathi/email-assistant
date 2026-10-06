@@ -33,6 +33,9 @@ import { cn } from "@/lib/utils"
 import EmailDisplay from "./email-display"
 import ReplyBox from "./reply-box"
 
+import { useSetAtom } from "jotai"
+import { isAIChatOpenAtom } from "./ai-chat-panel"
+
 // ─── AI Label Color Mapping ──────────────────────────────────────────────────
 const AI_LABEL_STYLES: Record<string, string> = {
   urgent: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
@@ -46,6 +49,7 @@ const AI_LABEL_STYLES: Record<string, string> = {
 
 const ThreadDisplay = () => {
   const { threadId, threads } = useThreads()
+  const setIsAIChatOpen = useSetAtom(isAIChatOpenAtom)
   const thread = threads?.find((t) => t.id === threadId)
 
   return (
@@ -120,7 +124,22 @@ const ThreadDisplay = () => {
             <TooltipContent>Forward</TooltipContent>
           </Tooltip>
 
-          <Separator orientation="vertical" className="h-6 mx-2" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAIChatOpen(true)}
+                className="gap-1.5 h-8 text-xs font-medium border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 px-2.5 shadow-2xs"
+              >
+                <Sparkles className="size-3.5 text-purple-500" />
+                <span className="hidden sm:inline">Ask AI</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Ask AI about this thread</TooltipContent>
+          </Tooltip>
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

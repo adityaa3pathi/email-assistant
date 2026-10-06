@@ -9,6 +9,7 @@ import { useLocalStorage } from 'usehooks-ts'
 import useThemeSwitching from './use-theme-switching'
 import useAccountSwitching from './use-account-switching'
 import { isComposeOpenAtom } from '@/app/mail/compose-dialog'
+import { isAIChatOpenAtom } from '@/app/mail/ai-chat-panel'
 
 export default function KBar({children}: {children: React.ReactNode}) {
 
@@ -16,6 +17,7 @@ export default function KBar({children}: {children: React.ReactNode}) {
     const [tab, setTab] = useLocalStorage<'inbox' | 'draft' | 'sent' >('email-assistant-tab', 'inbox')
     const [done, setDone] = useLocalStorage('email-assistant-done', false)
     const setIsComposeOpen = useSetAtom(isComposeOpenAtom)
+    const setIsAIChatOpen = useSetAtom(isAIChatOpenAtom)
 
     const actions: Action[] = [
         {
@@ -27,6 +29,17 @@ export default function KBar({children}: {children: React.ReactNode}) {
             subtitle: "Compose a new email",
             perform: () => {
                 setIsComposeOpen(true)
+            }
+        },
+        {
+            id: "aiChatAction",
+            name: "Ask AI Assistant",
+            shortcut: ['a'],
+            keywords: "ai, assistant, chat, copilot, agent, search, summarize",
+            section: "Actions",
+            subtitle: "Open AI Assistant copilot drawer",
+            perform: () => {
+                setIsAIChatOpen(true)
             }
         },
         {

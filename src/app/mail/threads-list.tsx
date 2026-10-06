@@ -25,7 +25,7 @@ const ThreadList = () => {
   // 1. Syncing State (when account is actively fetching from Gmail)
   if (isSyncing || account?.syncStatus === "syncing" || (account?.syncStatus === "pending" && (!threads || threads.length === 0))) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center h-[calc(100vh-140px)] gap-3 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center p-8 text-center h-full min-h-[300px] gap-3 text-muted-foreground">
         <RefreshCw className="size-8 animate-spin text-primary opacity-80" />
         <div className="flex flex-col gap-1">
           <p className="font-semibold text-foreground text-sm">Syncing with Gmail...</p>
@@ -40,7 +40,7 @@ const ThreadList = () => {
   // 2. Failed Sync State
   if (account?.syncStatus === "failed") {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center h-[calc(100vh-140px)] gap-3">
+      <div className="flex flex-col items-center justify-center p-6 text-center h-full min-h-[300px] gap-3">
         <AlertCircle className="size-8 text-destructive" />
         <p className="font-semibold text-sm text-destructive">Sync Error</p>
         <p className="text-xs text-muted-foreground max-w-[280px]">
@@ -57,7 +57,7 @@ const ThreadList = () => {
   // 3. Empty State (synced but no threads)
   if (threads && threads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center h-[calc(100vh-140px)] gap-3 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center p-8 text-center h-full min-h-[300px] gap-3 text-muted-foreground">
         <Inbox className="size-10 stroke-1 opacity-50" />
         <div className="flex flex-col gap-1">
           <p className="font-medium text-foreground text-sm">No emails in this folder</p>
@@ -89,8 +89,8 @@ const ThreadList = () => {
   }, {} as Record<string, typeof threads>)
 
   return (
-    <div className="w-full max-w-full overflow-y-auto overflow-x-hidden max-h-[calc(100vh-120px)]">
-      <div className="flex flex-col gap-2 p-4 pt-0 w-full min-w-0">
+    <div className="w-full max-w-full p-4 pt-2">
+      <div className="flex flex-col gap-2 w-full min-w-0">
         {Object.entries(groupedThreads ?? {}).map(([date, threads]) => (
           <React.Fragment key={date}>
             {/* Date header */}

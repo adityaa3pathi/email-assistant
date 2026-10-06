@@ -15,17 +15,16 @@ interface pageProps {
   
 }
 
-const page = ({}) => {
-  return<>
-   <div className="absolute bottom-4 left-4">
-    <ThemeToggle/>
-   </div>
-   <Mail
-  defaultCollapsed={false}
-  defaultLayout={[20, 32, 48]}
-  navCollapsedSize={4}
-  />
-  </>
+const page = () => {
+  return (
+    <main className="h-screen max-h-screen w-screen overflow-hidden bg-background">
+      <Mail
+        defaultCollapsed={false}
+        defaultLayout={[20, 32, 48]}
+        navCollapsedSize={4}
+      />
+    </main>
+  )
 }
 
 export default page

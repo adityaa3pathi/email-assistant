@@ -8,17 +8,20 @@ import {
 } from "@/components/ui/resizable"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import AccountSwitcher from "./account-switcher"
 import Sidebar from "./sidebar"
 import ThreadList from "./threads-list"
 import ThreadDisplay from "./thread-display"
 import SearchBar from "./search-bar"
-import AIChatPanel from "./ai-chat-panel"
-import ComposeDialog from "./compose-dialog"
+import { AIChatDrawer } from "./ai-chat-panel"
+import ComposeDialog, { isComposeOpenAtom } from "./compose-dialog"
+import { Plus } from "lucide-react"
 
 import { useLocalStorage } from "usehooks-ts"
+import { useSetAtom } from "jotai"
 
 type Props = {
   defaultLayout?: number[]
@@ -32,98 +35,122 @@ const Mail = ({
   defaultCollapsed,
 }: Props) => {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed)
-  const [tab] = useLocalStorage<'inbox' | 'draft' | 'sent'>('email-assistant-tab', 'inbox')
-  const [done, setDone] = useLocalStorage('email-assistant-done', false)
-
+  const [tab] = useLocalStorage<"inbox" | "draft" | "sent">("email-assistant-tab", "inbox")
+  const [done, setDone] = useLocalStorage("email-assistant-done", false)
+  const setIsComposeOpen = useSetAtom(isComposeOpenAtom)
 
   return (
     <TooltipProvider delayDuration={0}>
-      <ResizablePanelGroup
-        direction="horizontal"
-        onLayout={(sizes: number[]) => {
-          setIsCollapsed(
-            sizes[0] === navCollapsedSize || sizes[0] === 0 || (sizes[0] !== undefined && sizes[0] < 10)
-          )
-        }}
-        className="h-full min-h-screen items-stretch"
-      >
-        {/* Sidebar */}
-        <ResizablePanel
-          defaultSize={defaultLayout[0]}
-          collapsedSize={navCollapsedSize}
-          collapsible
-          minSize={12}
-          maxSize={40}
-          className={cn(
-            isCollapsed &&
-              "min-w-[50px] transition-all duration-300 ease-in-out"
-          )}
+      <div className="h-screen max-h-screen w-screen overflow-hidden flex flex-col bg-background">
+        <ResizablePanelGroup
+          direction="horizontal"
+          onLayout={(sizes: number[]) => {
+            setIsCollapsed(
+              sizes[0] === navCollapsedSize || sizes[0] === 0 || (sizes[0] !== undefined && sizes[0] < 10)
+            )
+          }}
+          className="h-full w-full overflow-hidden items-stretch"
         >
-          <div className="flex h-full flex-col">
-            {/* Header */}
+          {/* ── 1. Left Sidebar Panel (Sticky Header, Pinned Top Compose, Sticky Footer AI & Theme) ── */}
+          <ResizablePanel
+            defaultSize={defaultLayout[0]}
+            collapsedSize={navCollapsedSize}
+            collapsible
+            minSize={12}
+            maxSize={28}
+            className={cn(
+              "h-full overflow-hidden border-r bg-sidebar/40 flex flex-col",
+              isCollapsed && "min-w-[50px] transition-all duration-300 ease-in-out"
+            )}
+          >
+            {/* Account Switcher Header (Pinned 52px) */}
             <div
               className={cn(
-                "flex h-[52px] items-center justify-center",
-                !isCollapsed && "px-2"
+                "flex h-[52px] shrink-0 items-center justify-center border-b px-2",
+                isCollapsed && "px-1"
               )}
             >
-              <AccountSwitcher isCollapsed={isCollapsed}/>
+              <AccountSwitcher isCollapsed={isCollapsed} />
             </div>
 
-            <Separator />
-
-            {/* Sidebar content */}
-            <Sidebar isCollapsed={isCollapsed}/>
-            <div className="flex-1"></div>
-            {/* Ask AI */}
-            <AIChatPanel isCollapsed={isCollapsed} />
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        {/* Thread list */}
-        <ResizablePanel defaultSize={defaultLayout[1]} minSize={25} className="min-w-0 overflow-hidden">
-          <Tabs 
-            value={done ? "done" : "inbox"} 
-            onValueChange={(v) => setDone(v === "done")} 
-            className="h-full flex flex-col min-w-0 w-full overflow-hidden"
-          >
-            {/* Tabs header */}
-            <div className="flex items-center px-4 py-2 shrink-0">
-              <h1 className="text-xl font-bold capitalize">{tab}</h1>
-              <TabsList className="ml-auto">
-                <TabsTrigger
-                  value="inbox"
-                  className="text-zinc-600 dark:text-zinc-200"
-                >
-                  Inbox
-                </TabsTrigger>
-                <TabsTrigger value="done" className="text-zinc-800 dark:text-zinc-200" >
-                    Done
-                </TabsTrigger>
-              </TabsList>
+            {/* Sidebar Body (Sticky Compose at top, nav in middle, Sticky Ask AI & Theme at bottom) */}
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <Sidebar isCollapsed={isCollapsed} />
             </div>
+          </ResizablePanel>
 
-            <Separator />
-            <div className="shrink-0">
-              <SearchBar />
-            </div>
-            <TabsContent value="inbox" className="m-0 flex-1 min-w-0 overflow-hidden">
-               <ThreadList/>
-            </TabsContent>
-            <TabsContent value="done" className="m-0 flex-1 min-w-0 overflow-hidden">
-               <ThreadList/>
-            </TabsContent>
-        
-          </Tabs>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={defaultLayout[2]} minSize={30} className="min-w-0 overflow-hidden">
-          <ThreadDisplay/>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-      <ComposeDialog />
+          <ResizableHandle withHandle />
+
+          {/* ── 2. Middle Thread List Panel (Header, Search, Scrollable Threads) ── */}
+          <ResizablePanel defaultSize={defaultLayout[1]} minSize={25} className="min-w-0 h-full overflow-hidden">
+            <Tabs
+              value={done ? "done" : "inbox"}
+              onValueChange={(v) => setDone(v === "done")}
+              className="h-full flex flex-col min-w-0 w-full overflow-hidden"
+            >
+              {/* Header (Aligned 52px height) */}
+              <div className="flex items-center px-4 h-[52px] shrink-0 border-b justify-between">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-bold capitalize tracking-tight">{tab}</h1>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Quick Compose Icon when Sidebar is collapsed */}
+                  {isCollapsed && (
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setIsComposeOpen(true)}
+                          className="size-8 rounded-lg"
+                        >
+                          <Plus className="size-4" />
+                          <span className="sr-only">Compose (C)</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Compose (C)</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  <TabsList className="h-8">
+                    <TabsTrigger value="inbox" className="text-xs px-2.5">
+                      Inbox
+                    </TabsTrigger>
+                    <TabsTrigger value="done" className="text-xs px-2.5">
+                      Done
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+              </div>
+
+              {/* Search Bar (Pinned) */}
+              <div className="shrink-0 p-2 border-b bg-background/50">
+                <SearchBar />
+              </div>
+
+              {/* Thread list content (Scrollable container) */}
+              <TabsContent value="inbox" className="m-0 flex-1 min-h-0 overflow-y-auto">
+                <ThreadList />
+              </TabsContent>
+              <TabsContent value="done" className="m-0 flex-1 min-h-0 overflow-y-auto">
+                <ThreadList />
+              </TabsContent>
+            </Tabs>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* ── 3. Right Thread Display Panel (Email reading & reply) ── */}
+          <ResizablePanel defaultSize={defaultLayout[2]} minSize={30} className="min-w-0 h-full overflow-hidden">
+            <ThreadDisplay />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+
+        {/* Global Floating Modals & Drawers */}
+        <ComposeDialog />
+        <AIChatDrawer />
+      </div>
     </TooltipProvider>
   )
 }
