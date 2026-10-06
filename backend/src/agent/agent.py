@@ -125,7 +125,15 @@ async def stream_agent_events(
 
             elif event_type == "on_tool_end":
                 output = event.get("data", {}).get("output")
-                output_str = output if isinstance(output, str) else json.dumps(output)
+                if hasattr(output, "content"):
+                    output_str = str(output.content)
+                elif isinstance(output, str):
+                    output_str = output
+                else:
+                    try:
+                        output_str = json.dumps(output)
+                    except Exception:
+                        output_str = str(output)
                 yield {
                     "type": "tool_end",
                     "tool": event.get("name"),
@@ -136,9 +144,17 @@ async def stream_agent_events(
             elif event_type == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
                 if chunk and hasattr(chunk, "content") and chunk.content:
-                    # Filter out tool call arguments from raw text stream
+                    text_piece = ""
                     if isinstance(chunk.content, str):
-                        yield {"type": "text", "content": chunk.content}
+                        text_piece = chunk.content
+                    elif isinstance(chunk.content, list):
+                        for part in chunk.content:
+                            if isinstance(part, str):
+                                text_piece += part
+                            elif isinstance(part, dict) and part.get("type") == "text":
+                                text_piece += part.get("text", "")
+                    if text_piece:
+                        yield {"type": "text", "content": text_piece}
 
         yield {"type": "done", "step_count": step_count}
 

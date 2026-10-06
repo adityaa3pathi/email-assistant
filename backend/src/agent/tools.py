@@ -28,7 +28,7 @@ def get_db_connection():
 def generate_embedding(text: str) -> list[float]:
     """Generate a 768-dimensional embedding vector."""
     result = genai.embed_content(
-        model="models/text-embedding-004",
+        model="models/gemini-embedding-001",
         content=text,
         output_dimensionality=768,
     )
@@ -78,6 +78,45 @@ def search_emails(account_id: str, query: str, limit: int = 5) -> str:
             LIMIT %s
         """, (query, account_id, query, limit * 2))
         sparse_rows = cur.fetchall()
+
+        # If both dense (no embeddings yet) and FTS tsquery return empty, use ILIKE / recent fallback
+        if not dense_rows and not sparse_rows:
+            stop_words = {"find", "recent", "emails", "email", "about", "latest", "show", "what", "have", "with", "from"}
+            terms = [t.strip() for t in query.lower().split() if len(t.strip()) > 2 and t.strip() not in stop_words]
+            where_clauses = ['t."accountId" = %s']
+            params = [account_id]
+
+            if terms:
+                ilike_conditions = []
+                for term in terms[:3]:
+                    ilike_conditions.append('(e.subject ILIKE %s OR e."bodySnippet" ILIKE %s)')
+                    params.extend([f"%{term}%", f"%{term}%"])
+                where_clauses.append(f"({' OR '.join(ilike_conditions)})")
+
+            params.append(limit)
+            cur.execute(f"""
+                SELECT e.id AS "emailId", e.subject, e."bodySnippet", e."sentAt", e."threadId"
+                FROM "Email" e
+                JOIN "Thread" t ON t.id = e."threadId"
+                WHERE {' AND '.join(where_clauses)}
+                ORDER BY e."sentAt" DESC
+                LIMIT %s
+            """, tuple(params))
+            fallback_rows = cur.fetchall()
+
+            # If still empty (e.g. general query like "latest emails"), fetch latest emails
+            if not fallback_rows:
+                cur.execute("""
+                    SELECT e.id AS "emailId", e.subject, e."bodySnippet", e."sentAt", e."threadId"
+                    FROM "Email" e
+                    JOIN "Thread" t ON t.id = e."threadId"
+                    WHERE t."accountId" = %s
+                    ORDER BY e."sentAt" DESC
+                    LIMIT %s
+                """, (account_id, limit))
+                fallback_rows = cur.fetchall()
+
+            sparse_rows = fallback_rows
 
         # 3. Reciprocal Rank Fusion (RRF, k=60)
         K = 60.0

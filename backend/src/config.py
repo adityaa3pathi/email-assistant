@@ -4,7 +4,15 @@ import os
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-load_dotenv()
+# Search for .env in current directory or parent directories
+env_path = os.getenv("ENV_FILE") or next(
+    (p for p in [".env", "../.env", "../../.env"] if os.path.exists(p)),
+    None
+)
+if env_path:
+    load_dotenv(env_path)
+else:
+    load_dotenv()
 
 
 class Settings(BaseModel):
@@ -24,8 +32,8 @@ class Settings(BaseModel):
     vllm_enable_lora: bool = True
     vllm_max_loras: int = 2
 
-    # Google API (for Gemini routing comparison)
-    google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
+    # Google API (supports both GOOGLE_API_KEY and GOOGLE_GENERATIVE_AI_API_KEY)
+    google_api_key: str = os.getenv("GOOGLE_API_KEY") or os.getenv("GOOGLE_GENERATIVE_AI_API_KEY", "")
 
     # Routing thresholds
     use_finetuned_for_classification: bool = True

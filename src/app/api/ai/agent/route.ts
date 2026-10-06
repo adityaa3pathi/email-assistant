@@ -35,9 +35,50 @@ export async function POST(req: Request) {
       })
 
       if (pyResponse.ok && pyResponse.body) {
-        return new Response(pyResponse.body, {
+        const reader = pyResponse.body.getReader()
+        const decoder = new TextDecoder()
+        const encoder = new TextEncoder()
+
+        const stream = new ReadableStream({
+          async start(controller) {
+            let buffer = ""
+            try {
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split("\n\n")
+                buffer = lines.pop() || ""
+
+                for (const line of lines) {
+                  const trimmed = line.trim()
+                  if (!trimmed.startsWith("data:")) continue
+                  try {
+                    const jsonStr = trimmed.slice(5).trim()
+                    const ev = JSON.parse(jsonStr)
+                    if (ev.type === "text" && ev.content) {
+                      controller.enqueue(encoder.encode(ev.content))
+                    } else if (ev.type === "tool_start") {
+                      controller.enqueue(encoder.encode(`\n> 🛠️ *Agent invoking tool: \`${ev.tool}\`...*\n\n`))
+                    } else if (ev.type === "error" && ev.message) {
+                      controller.enqueue(encoder.encode(`\n*(Agent Error: ${ev.message})*`))
+                    }
+                  } catch {
+                    // Ignore malformed chunks
+                  }
+                }
+              }
+            } catch (err) {
+              controller.error(err)
+            } finally {
+              controller.close()
+            }
+          },
+        })
+
+        return new Response(stream, {
           headers: {
-            "Content-Type": "text/event-stream",
+            "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
           },
