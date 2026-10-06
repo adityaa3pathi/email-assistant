@@ -109,19 +109,9 @@ const Sidebar: FC<SidebarProps> = ({ isCollapsed }: SidebarProps) => {
         {/* Always-visible AI Assistant Trigger */}
         <AIChatButton isCollapsed={isCollapsed} />
 
-        {/* Theme Toggle & Status row */}
-        <div
-          className={cn(
-            "flex items-center justify-between pt-0.5 text-xs text-muted-foreground",
-            isCollapsed && "justify-center"
-          )}
-        >
-          {!isCollapsed && (
-            <span className="text-[11px] truncate px-1 font-medium text-muted-foreground">
-              Theme
-            </span>
-          )}
-          <ThemeToggle className="h-7 w-7 text-muted-foreground hover:text-foreground" />
+        {/* Theme Toggle Button */}
+        <div className="pt-0.5">
+          <ThemeToggle isCollapsed={isCollapsed} />
         </div>
       </div>
     </div>
