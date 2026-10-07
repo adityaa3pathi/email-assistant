@@ -6,7 +6,10 @@ import { useEffect, useMemo } from "react"
 export const threadAtom = atom<string | null>(null)
 
 const useThreads = () => {
-    const { data: accounts, refetch: refetchAccounts } = api.account.getAccounts.useQuery()
+    const { data: accounts, refetch: refetchAccounts } = api.account.getAccounts.useQuery(undefined, {
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    })
     const [accountId, setAccountId] = useLocalStorage('accountId', '')
     const [tab] = useLocalStorage('email-assistant-tab', 'inbox')
     const [done] = useLocalStorage("email-assistant-done", false)
@@ -47,11 +50,14 @@ const useThreads = () => {
         }
     }, [accounts, accountId, setAccountId])
 
+    // 3. Optimistic Account Resolution: fire queries in parallel without waiting for getAccounts
     const validAccountId = useMemo(() => {
-        if (!accounts || accounts.length === 0) return ''
-        if (accounts.some(a => a.id === accountId)) return accountId
-        const synced = accounts.find(a => (a._count?.threads ?? 0) > 0 || a.syncStatus === 'synced')
-        return synced?.id ?? accounts[0]!.id
+        if (accounts && accounts.length > 0) {
+            if (accounts.some(a => a.id === accountId)) return accountId
+            const synced = accounts.find(a => (a._count?.threads ?? 0) > 0 || a.syncStatus === 'synced')
+            return synced?.id ?? accounts[0]!.id
+        }
+        return accountId || ''
     }, [accounts, accountId])
 
     const currentAccount = accounts?.find(e => e.id === validAccountId)
@@ -62,8 +68,9 @@ const useThreads = () => {
         done
     }, {
         enabled: !!validAccountId && !!tab,
+        staleTime: 10_000,
         placeholderData: e => e,
-        refetchInterval: (currentAccount?.syncStatus === 'syncing' || currentAccount?.syncStatus === 'pending') ? 2000 : 5000
+        refetchInterval: (currentAccount?.syncStatus === 'syncing' || currentAccount?.syncStatus === 'pending') ? 2000 : 8000
     })
 
     const syncMutation = api.account.syncAccount.useMutation({

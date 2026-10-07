@@ -10,7 +10,9 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import React from "react"
 
 type Props = {
-    email: RouterOutputs['account']['getThreads'][0]['emails'][0]
+    email: RouterOutputs['account']['getThreads'][0]['emails'][0] & {
+        body?: string | null
+    }
 }
 
 const EmailDisplay = ({ email }: Props) => {

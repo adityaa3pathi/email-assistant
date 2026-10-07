@@ -13,7 +13,10 @@ type Props = {
 
 const AccountSwitcher = ({ isCollapsed }: Props) => {
 
-    const { data } = api.account.getAccounts.useQuery()
+    const { data } = api.account.getAccounts.useQuery(undefined, {
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    })
     const [accountId, setAccountId] = useLocalStorage("accountId", '')
     const utils = api.useUtils()
     const deleteAccount = api.account.deleteAccount.useMutation({
@@ -32,7 +35,19 @@ const AccountSwitcher = ({ isCollapsed }: Props) => {
         }
     })
 
-    if(!data) return null
+    if (!data) {
+        if (isCollapsed) {
+            return (
+                <div className="h-9 w-9 rounded-lg bg-muted/60 animate-pulse flex items-center justify-center text-xs text-muted-foreground font-semibold" />
+            )
+        }
+        return (
+            <div className="h-9 w-full rounded-md bg-muted/60 animate-pulse flex items-center px-3 text-xs text-muted-foreground gap-2 border">
+                <div className="size-3.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                <span className="truncate">Connecting...</span>
+            </div>
+        )
+    }
     const preferredAccount = data.find(a => (a._count?.threads ?? 0) > 0 || a.syncStatus === 'synced') || data[0]
     const currentAccountId = (data.some(a => a.id === accountId) ? accountId : preferredAccount?.id) || ""
 

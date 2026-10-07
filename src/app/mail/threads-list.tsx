@@ -54,8 +54,33 @@ const ThreadList = () => {
     )
   }
 
-  // 3. Empty State (synced but no threads)
-  if (threads && threads.length === 0) {
+  // 3. Loading Skeleton State (when threads are loading for the first time)
+  if (!threads) {
+    return (
+      <div className="w-full p-4 pt-2 flex flex-col gap-2.5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            className="flex flex-col gap-2 rounded-lg border p-3.5 bg-card/40 animate-pulse"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="h-4 w-32 bg-muted rounded-md" />
+              <div className="h-3 w-16 bg-muted/70 rounded-md" />
+            </div>
+            <div className="h-3.5 w-3/4 bg-muted/80 rounded-md" />
+            <div className="h-3 w-full bg-muted/50 rounded-md" />
+            <div className="flex items-center gap-1.5 pt-1">
+              <div className="h-4 w-14 bg-muted/60 rounded-sm" />
+              <div className="h-4 w-12 bg-muted/40 rounded-sm" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // 4. Empty State (synced but no threads)
+  if (threads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center h-full min-h-[300px] gap-3 text-muted-foreground">
         <Inbox className="size-10 stroke-1 opacity-50" />

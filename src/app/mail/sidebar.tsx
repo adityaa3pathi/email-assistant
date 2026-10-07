@@ -23,21 +23,20 @@ const Sidebar: FC<SidebarProps> = ({ isCollapsed }: SidebarProps) => {
   const [tab] = useLocalStorage<"inbox" | "draft" | "sent">("email-assistant-tab", "inbox")
   const [_, setIsComposeOpen] = useAtom(isComposeOpenAtom)
 
-  const { data: accounts } = api.account.getAccounts.useQuery()
-  const validAccountId = accounts?.some((a) => a.id === accountId) ? accountId : ""
+  const { data: accounts } = api.account.getAccounts.useQuery(undefined, {
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+  const validAccountId = accounts?.some((a) => a.id === accountId) ? accountId : (accounts?.[0]?.id || accountId || "")
 
-  const { data: inboxThreads } = api.account.getNumThreads.useQuery(
-    { accountId: validAccountId, tab: "inbox" },
-    { enabled: !!validAccountId }
+  const { data: counts } = api.account.getThreadCounts.useQuery(
+    { accountId: validAccountId },
+    { enabled: !!validAccountId, staleTime: 15_000, refetchInterval: 12_000 }
   )
-  const { data: draftThreads } = api.account.getNumThreads.useQuery(
-    { accountId: validAccountId, tab: "draft" },
-    { enabled: !!validAccountId }
-  )
-  const { data: sentThreads } = api.account.getNumThreads.useQuery(
-    { accountId: validAccountId, tab: "sent" },
-    { enabled: !!validAccountId }
-  )
+
+  const inboxThreads = counts?.inbox
+  const draftThreads = counts?.draft
+  const sentThreads = counts?.sent
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden select-none">

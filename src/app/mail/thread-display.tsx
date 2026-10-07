@@ -35,6 +35,7 @@ import ReplyBox from "./reply-box"
 
 import { useSetAtom } from "jotai"
 import { isAIChatOpenAtom } from "./ai-chat-panel"
+import { api } from "@/trpc/react"
 
 // ─── AI Label Color Mapping ──────────────────────────────────────────────────
 const AI_LABEL_STYLES: Record<string, string> = {
@@ -48,9 +49,17 @@ const AI_LABEL_STYLES: Record<string, string> = {
 }
 
 const ThreadDisplay = () => {
-  const { threadId, threads } = useThreads()
+  const { threadId, threads, accountId } = useThreads()
   const setIsAIChatOpen = useSetAtom(isAIChatOpenAtom)
-  const thread = threads?.find((t) => t.id === threadId)
+  const listThread = threads?.find((t) => t.id === threadId)
+
+  // Fetch full email bodies on demand for the selected thread only
+  const { data: fullThread } = api.account.getThreadDetails.useQuery(
+    { threadId: threadId ?? "", accountId },
+    { enabled: !!threadId && !!accountId, staleTime: 30_000 }
+  )
+
+  const thread = fullThread || listThread
 
   return (
     <div className="flex flex-col h-full w-full min-w-0 overflow-hidden">

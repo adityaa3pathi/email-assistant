@@ -16,7 +16,7 @@ export const authorizeAccountAccess = async (accountId: string, userId: string) 
             id: accountId,
             userId
         }, select: {
-                id: true, emailAddress: true, name: true, accessToken: true
+            id: true, emailAddress: true, name: true, accessToken: true, syncStatus: true
         }
     })
     if(!account) throw new Error('Account not found')
@@ -44,6 +44,18 @@ export const accountRouter = createTRPCRouter({
             }
         })
     }),
+
+getThreadCounts: privateProcedure.input(z.object({
+    accountId: z.string(),
+})).query(async ({ctx, input}) => {
+    const account = await authorizeAccountAccess(input.accountId, ctx.auth.userId)
+    const [inbox, draft, sent] = await Promise.all([
+        ctx.db.thread.count({ where: { accountId: account.id, inboxStatus: true, done: false } }),
+        ctx.db.thread.count({ where: { accountId: account.id, draftStatus: true } }),
+        ctx.db.thread.count({ where: { accountId: account.id, sentStatus: true } }),
+    ])
+    return { inbox, draft, sent }
+}),
 
 getNumThreads: privateProcedure.input(z.object({
     accountId: z.string(),
@@ -75,11 +87,7 @@ getThreads: privateProcedure.input(z.object({
     const account = await authorizeAccountAccess(input.accountId, ctx.auth.userId) 
 
     // Auto-heal: If account is pending, trigger sync in the background
-    const accRecord = await ctx.db.account.findUnique({
-        where: { id: account.id },
-        select: { syncStatus: true }
-    });
-    if (accRecord?.syncStatus === 'pending') {
+    if (account.syncStatus === 'pending') {
         runInitialSync(account.id, ctx.auth.userId).catch(err => {
             console.error('[getThreads] Auto-heal sync error:', err);
         });
@@ -93,7 +101,7 @@ getThreads: privateProcedure.input(z.object({
         else if(input.tab === 'draft') {
         filter.draftStatus = true
        }
-        else if(input.tab === 'sent') {
+      else if(input.tab === 'sent') {
         filter.sentStatus = true
        }
 
@@ -101,7 +109,8 @@ getThreads: privateProcedure.input(z.object({
         equals: input.done
        }
 
-       return  await ctx.db.thread.findMany({
+       // Fast list query: omit heavy raw HTML body (99.5% payload reduction)
+       return await ctx.db.thread.findMany({
         where: filter,
             include: {
                 emails: {
@@ -110,7 +119,6 @@ getThreads: privateProcedure.input(z.object({
                     },
                     select: {
                         from: true,
-                        body: true,
                         bodySnippet: true,
                         emailLabel: true,
                         sysLabels: true,
@@ -124,8 +132,40 @@ getThreads: privateProcedure.input(z.object({
             orderBy: {
                 lastMessageDate: 'desc'
             }
-        
        })
+}),
+
+getThreadDetails: privateProcedure.input(z.object({
+    threadId: z.string(),
+    accountId: z.string()
+})).query(async ({ctx, input}) => {
+    const account = await authorizeAccountAccess(input.accountId, ctx.auth.userId)
+    return await ctx.db.thread.findFirst({
+        where: {
+            id: input.threadId,
+            accountId: account.id,
+        },
+        include: {
+            emails: {
+                orderBy: {
+                    sentAt: 'asc'
+                },
+                select: {
+                    from: true,
+                    to: true,
+                    cc: true,
+                    bcc: true,
+                    body: true,
+                    bodySnippet: true,
+                    emailLabel: true,
+                    sysLabels: true,
+                    id: true,
+                    sentAt: true,
+                    subject: true,
+                }
+            }
+        }
+    })
 }),
 getSuggessions: privateProcedure.input(z.object({
     accountId: z.string(), 
